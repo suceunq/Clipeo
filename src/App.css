@@ -1,1 +1,223 @@
-:root{font-family:Inter,Segoe UI,sans-serif;color:#edf6f2;background:#08110f}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#123b31,#08110f 45%);min-height:100vh}button,input,select{font:inherit}main{max-width:1100px;margin:auto;padding:24px}header{display:flex;justify-content:space-between;align-items:center}.brand{display:flex;gap:12px;align-items:center}.brand>span{display:grid;place-items:center;width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#38e6a5,#0b8f78);color:#05231b;font-size:24px}.brand h1{margin:0}.brand p,.hero p{margin:3px 0;color:#8eb5aa}.legal{font-size:12px;color:#74978e}.hero{text-align:center;padding:70px 0 34px}.hero h2{font-size:38px;margin:0}.urlbar{display:flex;align-items:center;gap:10px;margin:30px auto 0;max-width:850px;padding:8px 8px 8px 16px;border:1px solid #2a5c4f;border-radius:16px;background:#0d1c18}.urlbar input{flex:1;background:none;border:0;outline:0;color:white;padding:10px}.urlbar button,.download{border:0;border-radius:11px;padding:12px 20px;background:#35dfa1;color:#05251b;font-weight:700}.error{color:#ff8e8e;margin-top:12px}.card,.queue{background:#0b1815;border:1px solid #23483f;border-radius:18px;padding:20px}.media{display:grid;grid-template-columns:280px 1fr;gap:24px}.media img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:13px}.details h3{margin:5px 0}.details small{color:#35dfa1}.details p,.empty{color:#86a69e}.modes{display:flex;gap:7px;flex-wrap:wrap}.modes button,.destination button{display:flex;align-items:center;gap:6px;border:1px solid #2a544a;background:#10231e;color:#a8c7bf;padding:9px 12px;border-radius:9px}.modes button.active{background:#1b5948;color:#52efb6}.modes svg,.destination svg,.download svg{width:16px}.details select{width:100%;margin:14px 0;background:#10231e;color:white;border:1px solid #2a544a;padding:11px;border-radius:9px}.destination{display:flex;align-items:center;gap:10px;color:#77968e;font-size:13px}.download{display:flex;gap:8px;align-items:center;margin-top:14px}.download:disabled{opacity:.4}.queue{margin-top:20px}.queue article{padding:14px 0;border-top:1px solid #1f3b34}.queue article>div:first-child{display:flex;justify-content:space-between}.queue small{color:#77a095}.progress{height:7px;background:#18322b;border-radius:8px;margin:10px 0;overflow:hidden}.progress span{display:block;height:100%;background:linear-gradient(90deg,#35dfa1,#26a9dd)}article footer{display:flex;gap:20px;color:#799b92;font-size:12px}@media(max-width:750px){.media{grid-template-columns:1fr}.hero h2{font-size:28px}.legal{display:none}}
+:root {
+  font-family:
+    Inter,
+    Segoe UI,
+    sans-serif;
+  color: #edf6f2;
+  background: #08110f;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: radial-gradient(circle at 50% 0, #123b31, #08110f 45%);
+  min-height: 100vh;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 24px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.brand > span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #38e6a5, #0b8f78);
+  color: #05231b;
+  font-size: 24px;
+}
+.brand h1 {
+  margin: 0;
+}
+.brand p,
+.hero p {
+  margin: 3px 0;
+  color: #8eb5aa;
+}
+.legal {
+  font-size: 12px;
+  color: #74978e;
+}
+.hero {
+  text-align: center;
+  padding: 70px 0 34px;
+}
+.hero h2 {
+  font-size: 38px;
+  margin: 0;
+}
+.urlbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 30px auto 0;
+  max-width: 850px;
+  padding: 8px 8px 8px 16px;
+  border: 1px solid #2a5c4f;
+  border-radius: 16px;
+  background: #0d1c18;
+}
+.urlbar input {
+  flex: 1;
+  background: none;
+  border: 0;
+  outline: 0;
+  color: white;
+  padding: 10px;
+}
+.urlbar button,
+.download {
+  border: 0;
+  border-radius: 11px;
+  padding: 12px 20px;
+  background: #35dfa1;
+  color: #05251b;
+  font-weight: 700;
+}
+.error {
+  color: #ff8e8e;
+  margin-top: 12px;
+}
+.card,
+.queue {
+  background: #0b1815;
+  border: 1px solid #23483f;
+  border-radius: 18px;
+  padding: 20px;
+}
+.media {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 24px;
+}
+.media img {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 13px;
+}
+.details h3 {
+  margin: 5px 0;
+}
+.details small {
+  color: #35dfa1;
+}
+.details p,
+.empty {
+  color: #86a69e;
+}
+.modes {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.modes button,
+.destination button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #2a544a;
+  background: #10231e;
+  color: #a8c7bf;
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+.modes button.active {
+  background: #1b5948;
+  color: #52efb6;
+}
+.modes svg,
+.destination svg,
+.download svg {
+  width: 16px;
+}
+.details select {
+  width: 100%;
+  margin: 14px 0;
+  background: #10231e;
+  color: white;
+  border: 1px solid #2a544a;
+  padding: 11px;
+  border-radius: 9px;
+}
+.destination {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #77968e;
+  font-size: 13px;
+}
+.download {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 14px;
+}
+.download:disabled {
+  opacity: 0.4;
+}
+.queue {
+  margin-top: 20px;
+}
+.queue-title { display:flex; align-items:center; justify-content:space-between; }
+.queue-title h2 { margin:0; }
+.queue-title button { display:flex; align-items:center; gap:6px; border:1px solid #513434; background:#241817; color:#efaaaa; padding:8px 11px; border-radius:9px; cursor:pointer; }
+.queue-title svg { width:15px; }
+.queue article {
+  padding: 14px 0;
+  border-top: 1px solid #1f3b34;
+}
+.queue article > div:first-child {
+  display: flex;
+  justify-content: space-between;
+}
+.queue small {
+  color: #77a095;
+}
+.progress {
+  height: 7px;
+  background: #18322b;
+  border-radius: 8px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+.progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #35dfa1, #26a9dd);
+}
+article footer {
+  display: flex;
+  gap: 20px;
+  color: #799b92;
+  font-size: 12px;
+}
+@media (max-width: 750px) {
+  .media {
+    grid-template-columns: 1fr;
+  }
+  .hero h2 {
+    font-size: 28px;
+  }
+  .legal {
+    display: none;
+  }
+}

@@ -1,8 +1,220 @@
-import{app,BrowserWindow,dialog,ipcMain,shell,Menu}from'electron';import{spawn}from'node:child_process';import{mkdir,readFile,writeFile}from'node:fs/promises';import{join}from'node:path';import{randomUUID}from'node:crypto';import type{DownloadProgress,DownloadRequest,MediaInfo}from'../shared/types';
-let win:BrowserWindow|null=null;const dev=!app.isPackaged;const bin=()=>dev?join(__dirname,'..','..','resources','yt-dlp.exe'):join(process.resourcesPath,'bin','yt-dlp.exe');const deno=()=>dev?join(__dirname,'..','..','resources','deno.exe'):join(process.resourcesPath,'bin','deno.exe');const ffmpeg=()=>dev?join(__dirname,'..','..','node_modules','ffmpeg-static'):join(process.resourcesPath,'bin');const hist=()=>join(app.getPath('userData'),'history.json');
-function url(raw:string){const u=new URL(raw.trim());if(u.protocol!=='https:'||u.username||u.password)throw Error('Seules les URL HTTPS sans identifiants sont acceptées.');return u.toString()}
-function run(args:string[]){return new Promise<string>((ok,ko)=>{const p=spawn(bin(),['--js-runtimes',`deno:${deno()}`,...args],{windowsHide:true});let out='',err='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',ko);p.on('close',c=>c===0?ok(out):ko(Error(err.slice(-1200)||`Erreur moteur ${c}`)))})}
-async function history():Promise<DownloadProgress[]>{try{return JSON.parse(await readFile(hist(),'utf8'))}catch{return[]}}async function save(x:DownloadProgress){const a=await history(),i=a.findIndex(v=>v.id===x.id);i<0?a.unshift(x):a[i]=x;await writeFile(hist(),JSON.stringify(a.slice(0,200),null,2))}
-app.on('web-contents-created',(_event,contents)=>contents.on('context-menu',(_e,p)=>{const items:Electron.MenuItemConstructorOptions[]=[];if(p.isEditable)items.push({label:'Annuler',role:'undo',enabled:p.editFlags.canUndo},{label:'Rétablir',role:'redo',enabled:p.editFlags.canRedo},{type:'separator'},{label:'Couper',role:'cut',enabled:p.editFlags.canCut},{label:'Copier',role:'copy',enabled:p.editFlags.canCopy},{label:'Coller',role:'paste',enabled:p.editFlags.canPaste},{type:'separator'},{label:'Tout sélectionner',role:'selectAll'});else if(p.selectionText)items.push({label:'Copier',role:'copy'});if(p.linkURL?.startsWith('https://'))items.push({type:'separator'},{label:'Ouvrir le lien dans le navigateur',click:()=>void shell.openExternal(p.linkURL)});if(items.length)Menu.buildFromTemplate(items).popup()}));
-function window(){win=new BrowserWindow({width:1180,height:780,minWidth:900,minHeight:620,backgroundColor:'#090d14',webPreferences:{preload:join(__dirname,'preload.js'),sandbox:true,contextIsolation:true,nodeIntegration:false}});win.webContents.setWindowOpenHandler(({url})=>{if(url.startsWith('https://'))void shell.openExternal(url);return{action:'deny'}});win.webContents.on('will-navigate',e=>e.preventDefault());win.webContents.session.setPermissionRequestHandler((_w,_p,cb)=>cb(false));dev?win.loadURL('http://localhost:5173'):win.loadFile(join(__dirname,'..','..','dist','index.html'))}
-app.whenReady().then(()=>{window();ipcMain.handle('media:analyze',async(_e,raw:string):Promise<MediaInfo>=>{const u=url(raw),d=JSON.parse(await run(['--dump-single-json','--no-playlist','--skip-download',u]));const f=(d.formats??[]).filter((x:any)=>x.vcodec&&x.vcodec!=='none'&&x.height).map((x:any)=>({id:String(x.format_id),label:`${x.height}p${x.fps?` · ${x.fps} fps`:''} · ${x.ext}`,height:x.height??null,ext:x.ext??'',fps:x.fps??null,size:x.filesize??x.filesize_approx??null})).sort((a:any,b:any)=>b.height-a.height);return{url:u,title:d.title??'Sans titre',author:d.uploader??d.channel??'',duration:d.duration??0,thumbnail:d.thumbnail??null,platform:d.extractor_key??'',formats:[...new Map(f.map((x:any)=>[`${x.height}-${x.ext}`,x])).values()]as any}});ipcMain.handle('files:chooseFolder',async()=>{const r=await dialog.showOpenDialog(win!,{properties:['openDirectory','createDirectory']});return r.canceled?null:r.filePaths[0]});ipcMain.handle('history:list',history);ipcMain.handle('media:download',async(_e,r:DownloadRequest)=>{const u=url(r.url);await mkdir(r.outputDir,{recursive:true});const x:DownloadProgress={id:randomUUID(),title:r.title,percent:0,speed:'—',eta:'—',status:'downloading'};await save(x);const a=['--newline','--no-playlist','--ffmpeg-location',ffmpeg(),'-o',join(r.outputDir,'%(title).180B [%(id)s].%(ext)s')];r.mode==='video'?a.push('-f',r.formatId?`${r.formatId}+bestaudio/best`:'bv*+ba/best','--merge-output-format','mp4'):r.mode==='thumbnail'?a.push('--skip-download','--write-thumbnail','--convert-thumbnails','jpg'):a.push('-x','--audio-format',r.mode,'--audio-quality','0');a.push(u);const p=spawn(bin(),a,{windowsHide:true});p.stdout.on('data',d=>{const m=String(d).match(/\[download\]\s+([\d.]+)%.*?at\s+([^\s]+).*?ETA\s+([^\s]+)/);if(m){x.percent=+m[1];x.speed=m[2];x.eta=m[3];win?.webContents.send('media:progress',{...x})}});p.stderr.on('data',d=>x.message=String(d).slice(-500));p.on('close',async c=>{x.status=c===0?'done':'error';if(!c)x.percent=100;await save(x);win?.webContents.send('media:progress',{...x})});return{id:x.id}})});app.on('window-all-closed',()=>{if(process.platform!=='darwin')app.quit()});
+import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from "electron";
+import { spawn } from "node:child_process";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { randomUUID } from "node:crypto";
+import type {
+  DownloadProgress,
+  DownloadRequest,
+  MediaInfo,
+} from "../shared/types";
+let win: BrowserWindow | null = null;
+const dev = !app.isPackaged;
+const bin = () =>
+  dev
+    ? join(__dirname, "..", "..", "resources", "yt-dlp.exe")
+    : join(process.resourcesPath, "bin", "yt-dlp.exe");
+const deno = () =>
+  dev
+    ? join(__dirname, "..", "..", "resources", "deno.exe")
+    : join(process.resourcesPath, "bin", "deno.exe");
+const ffmpeg = () =>
+  dev
+    ? join(__dirname, "..", "..", "node_modules", "ffmpeg-static")
+    : join(process.resourcesPath, "bin");
+const hist = () => join(app.getPath("userData"), "history.json");
+function url(raw: string) {
+  const u = new URL(raw.trim());
+  if (u.protocol !== "https:" || u.username || u.password)
+    throw Error("Seules les URL HTTPS sans identifiants sont acceptées.");
+  return u.toString();
+}
+function run(args: string[]) {
+  return new Promise<string>((ok, ko) => {
+    const p = spawn(bin(), ["--js-runtimes", `deno:${deno()}`, ...args], {
+      windowsHide: true,
+    });
+    let out = "",
+      err = "";
+    p.stdout.on("data", (d) => (out += d));
+    p.stderr.on("data", (d) => (err += d));
+    p.on("error", ko);
+    p.on("close", (c) =>
+      c === 0 ? ok(out) : ko(Error(err.slice(-1200) || `Erreur moteur ${c}`)),
+    );
+  });
+}
+async function history(): Promise<DownloadProgress[]> {
+  try {
+    return JSON.parse(await readFile(hist(), "utf8"));
+  } catch {
+    return [];
+  }
+}
+async function save(x: DownloadProgress) {
+  const a = await history(),
+    i = a.findIndex((v) => v.id === x.id);
+  i < 0 ? a.unshift(x) : (a[i] = x);
+  await writeFile(hist(), JSON.stringify(a.slice(0, 200), null, 2));
+}
+app.on("web-contents-created", (_event, contents) =>
+  contents.on("context-menu", (_e, p) => {
+    const items: Electron.MenuItemConstructorOptions[] = [];
+    if (p.isEditable)
+      items.push(
+        { label: "Annuler", role: "undo", enabled: p.editFlags.canUndo },
+        { label: "Rétablir", role: "redo", enabled: p.editFlags.canRedo },
+        { type: "separator" },
+        { label: "Couper", role: "cut", enabled: p.editFlags.canCut },
+        { label: "Copier", role: "copy", enabled: p.editFlags.canCopy },
+        { label: "Coller", role: "paste", enabled: p.editFlags.canPaste },
+        { type: "separator" },
+        { label: "Tout sélectionner", role: "selectAll" },
+      );
+    else if (p.selectionText) items.push({ label: "Copier", role: "copy" });
+    if (p.linkURL?.startsWith("https://"))
+      items.push(
+        { type: "separator" },
+        {
+          label: "Ouvrir le lien dans le navigateur",
+          click: () => void shell.openExternal(p.linkURL),
+        },
+      );
+    if (items.length) Menu.buildFromTemplate(items).popup();
+  }),
+);
+function window() {
+  win = new BrowserWindow({
+    width: 1180,
+    height: 780,
+    minWidth: 900,
+    minHeight: 620,
+    backgroundColor: "#090d14",
+    webPreferences: {
+      preload: join(__dirname, "preload.js"),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://")) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+  win.webContents.on("will-navigate", (e) => e.preventDefault());
+  win.webContents.session.setPermissionRequestHandler((_w, _p, cb) =>
+    cb(false),
+  );
+  dev
+    ? win.loadURL("http://localhost:5173")
+    : win.loadFile(join(__dirname, "..", "..", "dist", "index.html"));
+}
+app.whenReady().then(() => {
+  window();
+  ipcMain.handle(
+    "media:analyze",
+    async (_e, raw: string): Promise<MediaInfo> => {
+      const u = url(raw),
+        d = JSON.parse(
+          await run([
+            "--dump-single-json",
+            "--no-playlist",
+            "--skip-download",
+            u,
+          ]),
+        );
+      const f = (d.formats ?? [])
+        .filter((x: any) => x.vcodec && x.vcodec !== "none" && x.height)
+        .map((x: any) => ({
+          id: String(x.format_id),
+          label: `${x.height}p${x.fps ? ` · ${x.fps} fps` : ""} · ${x.ext}`,
+          height: x.height ?? null,
+          ext: x.ext ?? "",
+          fps: x.fps ?? null,
+          size: x.filesize ?? x.filesize_approx ?? null,
+        }))
+        .sort((a: any, b: any) => b.height - a.height);
+      return {
+        url: u,
+        title: d.title ?? "Sans titre",
+        author: d.uploader ?? d.channel ?? "",
+        duration: d.duration ?? 0,
+        thumbnail: d.thumbnail ?? null,
+        platform: d.extractor_key ?? "",
+        formats: [
+          ...new Map(f.map((x: any) => [`${x.height}-${x.ext}`, x])).values(),
+        ] as any,
+      };
+    },
+  );
+  ipcMain.handle("files:chooseFolder", async () => {
+    const r = await dialog.showOpenDialog(win!, {
+      properties: ["openDirectory", "createDirectory"],
+    });
+    return r.canceled ? null : r.filePaths[0];
+  });
+  ipcMain.handle("history:list", history);
+  ipcMain.handle("history:clear", async () => {
+    await writeFile(hist(), "[]", "utf8");
+  });
+  ipcMain.handle("media:download", async (_e, r: DownloadRequest) => {
+    const u = url(r.url);
+    await mkdir(r.outputDir, { recursive: true });
+    const x: DownloadProgress = {
+      id: randomUUID(),
+      title: r.title,
+      percent: 0,
+      speed: "—",
+      eta: "—",
+      status: "downloading",
+    };
+    await save(x);
+    const a = [
+      "--newline",
+      "--no-playlist",
+      "--ffmpeg-location",
+      ffmpeg(),
+      "-o",
+      join(r.outputDir, "%(title).180B [%(id)s].%(ext)s"),
+    ];
+    r.mode === "video"
+      ? a.push(
+          "-f",
+          r.formatId ? `${r.formatId}+bestaudio/best` : "bv*+ba/best",
+          "--merge-output-format",
+          "mp4",
+        )
+      : r.mode === "thumbnail"
+        ? a.push(
+            "--skip-download",
+            "--write-thumbnail",
+            "--convert-thumbnails",
+            "jpg",
+          )
+        : a.push("-x", "--audio-format", r.mode, "--audio-quality", "0");
+    a.push(u);
+    const p = spawn(bin(), a, { windowsHide: true });
+    p.stdout.on("data", (d) => {
+      const m = String(d).match(
+        /\[download\]\s+([\d.]+)%.*?at\s+([^\s]+).*?ETA\s+([^\s]+)/,
+      );
+      if (m) {
+        x.percent = +m[1];
+        x.speed = m[2];
+        x.eta = m[3];
+        win?.webContents.send("media:progress", { ...x });
+      }
+    });
+    p.stderr.on("data", (d) => (x.message = String(d).slice(-500)));
+    p.on("close", async (c) => {
+      x.status = c === 0 ? "done" : "error";
+      if (!c) x.percent = 100;
+      await save(x);
+      win?.webContents.send("media:progress", { ...x });
+    });
+    return { id: x.id };
+  });
+});
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
+});

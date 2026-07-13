@@ -1,1 +1,17 @@
-import type{DownloadProgress,DownloadRequest,MediaInfo}from'../shared/types';declare global{interface Window{clipeo:{analyze:(url:string)=>Promise<MediaInfo>;chooseFolder:()=>Promise<string|null>;download:(request:DownloadRequest)=>Promise<{id:string}>;history:()=>Promise<DownloadProgress[]>;onProgress:(callback:(value:DownloadProgress)=>void)=>()=>void}}}
+import type {
+  DownloadProgress,
+  DownloadRequest,
+  MediaInfo,
+} from "../shared/types";
+declare global {
+  interface Window {
+    clipeo: {
+      analyze: (url: string) => Promise<MediaInfo>;
+      chooseFolder: () => Promise<string | null>;
+      download: (request: DownloadRequest) => Promise<{ id: string }>;
+      history: () => Promise<DownloadProgress[]>;
+      clearHistory: () => Promise<void>;
+      onProgress: (callback: (value: DownloadProgress) => void) => () => void;
+    };
+  }
+}
