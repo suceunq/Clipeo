@@ -1,5 +1,5 @@
 import { renameSync, existsSync, rmSync, readFileSync, writeFileSync } from 'node:fs';
-for (const name of ['main', 'preload']) {
+for (const name of ['main', 'preload', 'bootstrap']) {
   const from = `dist-electron/electron/${name}.js`;
   const to = `dist-electron/electron/${name}.cjs`;
   if (existsSync(to)) rmSync(to);
