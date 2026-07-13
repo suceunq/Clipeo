@@ -8,8 +8,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build && tsc -p tsconfig.electron.json && node scripts/fix-electron.mjs",
+    "verify:electron": "node scripts/verify-electron-build.mjs",
     "start": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "dist": "npm run build && electron-builder --win nsis",
+    "dist": "npm run build && npm run verify:electron && electron-builder --win nsis",
     "lint": "oxlint",
     "preview": "vite preview"
   },
