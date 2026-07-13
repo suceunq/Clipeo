@@ -11,6 +11,7 @@ export default function App() {
     [info, setInfo] = useState<MediaInfo | null>(null),
     [mode, setMode] = useState<DownloadMode>("video"),
     [format, setFormat] = useState(""),
+    [maxItems, setMaxItems] = useState(50),
     [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -57,6 +58,8 @@ export default function App() {
         mode,
         formatId: format,
         outputDir: folder,
+        collection: info.isCollection,
+        maxItems,
       });
   }
   return (
@@ -99,8 +102,10 @@ export default function App() {
             <small>{info.platform}</small>
             <h3>{info.title}</h3>
             <p>
-              {info.author} · {Math.floor(info.duration / 60)} min{" "}
-              {Math.round(info.duration % 60)} s
+              {info.author}
+              {info.isCollection
+                ? ` · Collection${info.itemCount ? ` · ${info.itemCount} élément(s)` : ""}`
+                : ` · ${Math.floor(info.duration / 60)} min ${Math.round(info.duration % 60)} s`}
             </p>
             <div className="modes">
               <button
@@ -140,6 +145,26 @@ export default function App() {
                 ))}
               </select>
             )}
+            {info.isCollection && (
+              <div className="batch-options">
+                <div>
+                  <strong>Téléchargement groupé</strong>
+                  <small>
+                    Playlist, chaîne ou profil public. Les éléments déjà téléchargés seront ignorés.
+                  </small>
+                </div>
+                <label>
+                  Limite
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={maxItems}
+                    onChange={(e) => setMaxItems(Math.min(1000, Math.max(1, Number(e.target.value) || 1)))}
+                  />
+                </label>
+              </div>
+            )}
             <div className="destination">
               <button onClick={choose}>
                 <FolderOpen />
@@ -149,7 +174,7 @@ export default function App() {
             </div>
             <button className="download" onClick={download} disabled={!folder}>
               <Download />
-              Télécharger
+              {info.isCollection ? `Télécharger jusqu’à ${maxItems} éléments` : "Télécharger"}
             </button>
           </div>
         </section>

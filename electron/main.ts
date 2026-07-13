@@ -114,15 +114,29 @@ app.whenReady().then(() => {
   ipcMain.handle(
     "media:analyze",
     async (_e, raw: string): Promise<MediaInfo> => {
-      const u = url(raw),
-        d = JSON.parse(
-          await run([
-            "--dump-single-json",
-            "--no-playlist",
-            "--skip-download",
-            u,
-          ]),
-        );
+      const u = url(raw);
+      const probe = JSON.parse(
+        await run([
+          "--dump-single-json",
+          "--flat-playlist",
+          "--playlist-end",
+          "201",
+          "--skip-download",
+          u,
+        ]),
+      );
+      const entries = Array.isArray(probe.entries) ? probe.entries.filter(Boolean) : [];
+      const isCollection = entries.length > 0;
+      const d = isCollection
+        ? probe
+        : JSON.parse(
+            await run([
+              "--dump-single-json",
+              "--no-playlist",
+              "--skip-download",
+              u,
+            ]),
+          );
       const f = (d.formats ?? [])
         .filter((x: any) => x.vcodec && x.vcodec !== "none" && x.height)
         .map((x: any) => ({
@@ -144,6 +158,10 @@ app.whenReady().then(() => {
         formats: [
           ...new Map(f.map((x: any) => [`${x.height}-${x.ext}`, x])).values(),
         ] as any,
+        isCollection,
+        itemCount: isCollection
+          ? Number(d.playlist_count ?? d.n_entries ?? entries.length) || null
+          : null,
       };
     },
   );
@@ -171,12 +189,24 @@ app.whenReady().then(() => {
     await save(x);
     const a = [
       "--newline",
-      "--no-playlist",
       "--ffmpeg-location",
       ffmpeg(),
       "-o",
       join(r.outputDir, "%(title).180B [%(id)s].%(ext)s"),
     ];
+    if (r.collection) {
+      const limit = Math.min(1000, Math.max(1, Math.trunc(r.maxItems ?? 50)));
+      a.push(
+        "--yes-playlist",
+        "--playlist-end",
+        String(limit),
+        "--download-archive",
+        join(r.outputDir, ".clipeo-archive.txt"),
+        "--ignore-errors",
+      );
+    } else {
+      a.push("--no-playlist");
+    }
     r.mode === "video"
       ? a.push(
           "-f",

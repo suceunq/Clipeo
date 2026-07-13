@@ -14,6 +14,8 @@ export interface MediaInfo {
   thumbnail: string | null;
   platform: string;
   formats: MediaFormat[];
+  isCollection: boolean;
+  itemCount: number | null;
 }
 export type DownloadMode = "video" | "mp3" | "m4a" | "wav" | "thumbnail";
 export interface DownloadRequest {
@@ -22,6 +24,8 @@ export interface DownloadRequest {
   mode: DownloadMode;
   formatId?: string;
   outputDir: string;
+  collection?: boolean;
+  maxItems?: number;
 }
 export interface DownloadProgress {
   id: string;
