@@ -91,7 +91,7 @@ function window() {
     minHeight: 620,
     backgroundColor: "#090d14",
     webPreferences: {
-      preload: join(__dirname, "preload.js"),
+      preload: join(__dirname, "preload.cjs"),
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,

@@ -6,4 +6,4 @@ for (const name of ['main', 'preload', 'bootstrap']) {
   renameSync(from, to);
 }
 const main = 'dist-electron/electron/main.cjs';
-writeFileSync(main, readFileSync(main, 'utf8').replace("'preload.js'", "'preload.cjs'"));
+writeFileSync(main, readFileSync(main, 'utf8').replace(/["']preload\.js["']/g, '"preload.cjs"'));
