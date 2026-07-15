@@ -29,6 +29,23 @@ header {
   justify-content: space-between;
   align-items: center;
 }
+.header-actions { display: flex; align-items: center; gap: 14px; }
+.feedback-button { display: flex; align-items: center; gap: 7px; border: 1px solid #2a5c4f; border-radius: 10px; padding: 9px 12px; color: #52efb6; background: #0d1c18; cursor: pointer; }
+.feedback-button svg { width: 16px; }
+.feedback-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: #000a; }
+.feedback-dialog { width: min(520px, 100%); padding: 20px; border: 1px solid #2a544a; border-radius: 16px; background: #0b1815; box-shadow: 0 24px 70px #000b; }
+.feedback-dialog header { margin-bottom: 16px; }
+.feedback-dialog h2 { margin: 0; }
+.feedback-dialog header p { margin: 4px 0 0; color: #86a69e; }
+.feedback-dialog header button { border: 0; color: #86a69e; background: transparent; cursor: pointer; }
+.feedback-dialog header svg { width: 20px; }
+.feedback-dialog label { display: grid; gap: 5px; margin-top: 12px; color: #86a69e; font-size: 12px; }
+.feedback-dialog input, .feedback-dialog textarea { width: 100%; padding: 10px; border: 1px solid #2a544a; border-radius: 8px; color: white; background: #10231e; resize: vertical; }
+.feedback-dialog footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.feedback-dialog footer button { padding: 9px 14px; border: 1px solid #2a544a; border-radius: 8px; color: white; background: #10231e; }
+.feedback-dialog footer .send { border: 0; color: #05251b; background: #35dfa1; font-weight: 700; }
+.feedback-dialog footer .send:disabled { opacity: .4; }
+.feedback-copied { color: #52efb6; font-size: 12px; }
 .brand {
   display: flex;
   gap: 12px;

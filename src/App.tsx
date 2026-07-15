@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, FolderOpen, Link, Music, Trash2, Video } from "lucide-react";
+import { Download, FolderOpen, Link, Mail, Music, Trash2, Video, X } from "lucide-react";
 import type {
   DownloadMode,
   DownloadProgress,
@@ -14,6 +14,7 @@ export default function App() {
     [maxItems, setMaxItems] = useState(50),
     [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""),
     [busy, setBusy] = useState(false),
+    [feedbackOpen, setFeedbackOpen] = useState(false),
     [error, setError] = useState(""),
     [items, setItems] = useState<DownloadProgress[]>([]);
   useEffect(() => {
@@ -72,9 +73,7 @@ export default function App() {
             <p>Vos médias, simplement.</p>
           </div>
         </div>
-        <div className="legal">
-          Contenus personnels, libres ou autorisés uniquement
-        </div>
+        <div className="header-actions"><button className="feedback-button" onClick={() => setFeedbackOpen(true)}><Mail />Suggestion / Correction</button><div className="legal">Contenus personnels, libres ou autorisés uniquement</div></div>
       </header>
       <section className="hero">
         <h2>Collez. Choisissez. Téléchargez.</h2>
@@ -210,6 +209,18 @@ export default function App() {
           ))
         )}
       </section>
+      {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}
     </main>
   );
+}
+
+function FeedbackDialog({ onClose }: { onClose: () => void }) {
+  const [subject, setSubject] = useState("Clipéo - Suggestion / Correction");
+  const [message, setMessage] = useState("");
+  const [copied, setCopied] = useState(false);
+  const email = "bob62138@gmail.com";
+  const body = `${message}\n\nApplication : Clipéo`;
+  const send = () => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+  const copy = async () => { await navigator.clipboard.writeText(`À : ${email}\nSujet : ${subject}\n\n${body}`); setCopied(true); };
+  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog" onClick={(e) => e.stopPropagation()}><header><div><h2>Suggestion / Correction</h2><p>Une idée ou un problème ? Écrivez-nous.</p></div><button onClick={onClose}><X /></button></header><label>Sujet<input value={subject} onChange={(e) => setSubject(e.target.value)} /></label><label>Message<textarea rows={7} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Décrivez votre suggestion ou les étapes du problème…" /></label>{copied && <p className="feedback-copied">Adresse et message copiés.</p>}<footer><button onClick={() => void copy()}>Copier</button><button className="send" disabled={!message.trim()} onClick={send}>Envoyer</button></footer></section></div>;
 }
