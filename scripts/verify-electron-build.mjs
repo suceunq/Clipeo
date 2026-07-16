@@ -21,4 +21,20 @@ if (!preload.includes('contextBridge') || !preload.includes('clipeo')) {
   throw new Error('Build Electron invalide : le pont sécurisé Clipéo est incomplet.');
 }
 
+const boundary = 'dist-electron/package.json';
+if (!existsSync(boundary)) {
+  throw new Error('Build Electron invalide : la frontière CommonJS est absente.');
+}
+const packageType = JSON.parse(readFileSync(boundary, 'utf8')).type;
+if (packageType !== 'commonjs') {
+  throw new Error('Build Electron invalide : les services Electron ne sont pas déclarés CommonJS.');
+}
+
+for (const name of ['ytdlp', 'validation', 'download-manager', 'history']) {
+  const service = `${directory}/services/${name}.js`;
+  if (!existsSync(service) || !readFileSync(service, 'utf8').includes('exports')) {
+    throw new Error(`Build Electron invalide : service CommonJS absent ou incorrect (${service}).`);
+  }
+}
+
 console.log('Build Electron vérifié : preload sécurisé présent et correctement référencé.');
