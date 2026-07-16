@@ -1,250 +1,61 @@
 import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from "electron";
-import { spawn } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-import { randomUUID } from "node:crypto";
-import type {
-  DownloadProgress,
-  DownloadRequest,
-  MediaInfo,
-} from "../shared/types";
+import { join, resolve } from "node:path";
+import type { MediaInfo } from "../shared/types";
+import { runYtDlp, friendlyError } from "./services/ytdlp";
+import { secureUrl, validateDownloadRequest } from "./services/validation";
+import { cancelDownload, queueDownload } from "./services/download-manager";
+import { clearHistory, listHistory, markInterrupted } from "./services/history";
+
 let win: BrowserWindow | null = null;
 const dev = !app.isPackaged;
-const bin = () =>
-  dev
-    ? join(__dirname, "..", "..", "resources", "yt-dlp.exe")
-    : join(process.resourcesPath, "bin", "yt-dlp.exe");
-const deno = () =>
-  dev
-    ? join(__dirname, "..", "..", "resources", "deno.exe")
-    : join(process.resourcesPath, "bin", "deno.exe");
-const ffmpeg = () =>
-  dev
-    ? join(__dirname, "..", "..", "node_modules", "ffmpeg-static")
-    : join(process.resourcesPath, "bin");
-const hist = () => join(app.getPath("userData"), "history.json");
-function url(raw: string) {
-  const u = new URL(raw.trim());
-  if (u.protocol !== "https:" || u.username || u.password)
-    throw Error("Seules les URL HTTPS sans identifiants sont acceptées.");
-  return u.toString();
+
+app.on("web-contents-created", (_event, contents) => contents.on("context-menu", (_e, p) => {
+  const items: Electron.MenuItemConstructorOptions[] = [];
+  if (p.isEditable) items.push(
+    { label: "Annuler", role: "undo", enabled: p.editFlags.canUndo }, { label: "Rétablir", role: "redo", enabled: p.editFlags.canRedo },
+    { type: "separator" }, { label: "Couper", role: "cut", enabled: p.editFlags.canCut }, { label: "Copier", role: "copy", enabled: p.editFlags.canCopy },
+    { label: "Coller", role: "paste", enabled: p.editFlags.canPaste }, { type: "separator" }, { label: "Tout sélectionner", role: "selectAll" },
+  ); else if (p.selectionText) items.push({ label: "Copier", role: "copy" });
+  if (p.linkURL?.startsWith("https://")) items.push({ type: "separator" }, { label: "Ouvrir le lien dans le navigateur", click: () => void shell.openExternal(p.linkURL) });
+  if (items.length) Menu.buildFromTemplate(items).popup();
+}));
+
+function createWindow() {
+  win = new BrowserWindow({ width: 1180, height: 780, minWidth: 900, minHeight: 620, backgroundColor: "#090d14", webPreferences: {
+    preload: join(__dirname, "preload.cjs"), sandbox: true, contextIsolation: true, nodeIntegration: false,
+  }});
+  win.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith("https://")) void shell.openExternal(url); return { action: "deny" }; });
+  win.webContents.on("will-navigate", (event) => event.preventDefault());
+  win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
+  void (dev ? win.loadURL("http://localhost:5173") : win.loadFile(join(__dirname, "..", "..", "dist", "index.html")));
 }
-function run(args: string[]) {
-  return new Promise<string>((ok, ko) => {
-    const p = spawn(bin(), ["--js-runtimes", `deno:${deno()}`, ...args], {
-      windowsHide: true,
-    });
-    let out = "",
-      err = "";
-    p.stdout.on("data", (d) => (out += d));
-    p.stderr.on("data", (d) => (err += d));
-    p.on("error", ko);
-    p.on("close", (c) =>
-      c === 0 ? ok(out) : ko(Error(err.slice(-1200) || `Erreur moteur ${c}`)),
-    );
-  });
-}
-async function history(): Promise<DownloadProgress[]> {
-  try {
-    return JSON.parse(await readFile(hist(), "utf8"));
-  } catch {
-    return [];
-  }
-}
-async function save(x: DownloadProgress) {
-  const a = await history(),
-    i = a.findIndex((v) => v.id === x.id);
-  i < 0 ? a.unshift(x) : (a[i] = x);
-  await writeFile(hist(), JSON.stringify(a.slice(0, 200), null, 2));
-}
-app.on("web-contents-created", (_event, contents) =>
-  contents.on("context-menu", (_e, p) => {
-    const items: Electron.MenuItemConstructorOptions[] = [];
-    if (p.isEditable)
-      items.push(
-        { label: "Annuler", role: "undo", enabled: p.editFlags.canUndo },
-        { label: "Rétablir", role: "redo", enabled: p.editFlags.canRedo },
-        { type: "separator" },
-        { label: "Couper", role: "cut", enabled: p.editFlags.canCut },
-        { label: "Copier", role: "copy", enabled: p.editFlags.canCopy },
-        { label: "Coller", role: "paste", enabled: p.editFlags.canPaste },
-        { type: "separator" },
-        { label: "Tout sélectionner", role: "selectAll" },
-      );
-    else if (p.selectionText) items.push({ label: "Copier", role: "copy" });
-    if (p.linkURL?.startsWith("https://"))
-      items.push(
-        { type: "separator" },
-        {
-          label: "Ouvrir le lien dans le navigateur",
-          click: () => void shell.openExternal(p.linkURL),
-        },
-      );
-    if (items.length) Menu.buildFromTemplate(items).popup();
-  }),
-);
-function window() {
-  win = new BrowserWindow({
-    width: 1180,
-    height: 780,
-    minWidth: 900,
-    minHeight: 620,
-    backgroundColor: "#090d14",
-    webPreferences: {
-      preload: join(__dirname, "preload.cjs"),
-      sandbox: true,
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https://")) void shell.openExternal(url);
-    return { action: "deny" };
-  });
-  win.webContents.on("will-navigate", (e) => e.preventDefault());
-  win.webContents.session.setPermissionRequestHandler((_w, _p, cb) =>
-    cb(false),
-  );
-  dev
-    ? win.loadURL("http://localhost:5173")
-    : win.loadFile(join(__dirname, "..", "..", "dist", "index.html"));
-}
-app.whenReady().then(() => {
-  window();
-  ipcMain.handle(
-    "media:analyze",
-    async (_e, raw: string): Promise<MediaInfo> => {
-      const u = url(raw);
-      const probe = JSON.parse(
-        await run([
-          "--dump-single-json",
-          "--flat-playlist",
-          "--playlist-end",
-          "201",
-          "--skip-download",
-          u,
-        ]),
-      );
+
+app.whenReady().then(async () => {
+  await markInterrupted();
+  createWindow();
+  ipcMain.handle("media:analyze", async (_event, raw: unknown): Promise<MediaInfo> => {
+    try {
+      const url = secureUrl(raw);
+      const probe = JSON.parse(await runYtDlp(["--dump-single-json", "--flat-playlist", "--playlist-end", "201", "--skip-download", url]));
       const entries = Array.isArray(probe.entries) ? probe.entries.filter(Boolean) : [];
       const isCollection = entries.length > 0;
-      const d = isCollection
-        ? probe
-        : JSON.parse(
-            await run([
-              "--dump-single-json",
-              "--no-playlist",
-              "--skip-download",
-              u,
-            ]),
-          );
-      const f = (d.formats ?? [])
-        .filter((x: any) => x.vcodec && x.vcodec !== "none" && x.height)
-        .map((x: any) => ({
-          id: String(x.format_id),
-          label: `${x.height}p${x.fps ? ` · ${x.fps} fps` : ""} · ${x.ext}`,
-          height: x.height ?? null,
-          ext: x.ext ?? "",
-          fps: x.fps ?? null,
-          size: x.filesize ?? x.filesize_approx ?? null,
-        }))
-        .sort((a: any, b: any) => b.height - a.height);
-      return {
-        url: u,
-        title: d.title ?? "Sans titre",
-        author: d.uploader ?? d.channel ?? "",
-        duration: d.duration ?? 0,
-        thumbnail: d.thumbnail ?? null,
-        platform: d.extractor_key ?? "",
-        formats: [
-          ...new Map(f.map((x: any) => [`${x.height}-${x.ext}`, x])).values(),
-        ] as any,
-        isCollection,
-        itemCount: isCollection
-          ? Number(d.playlist_count ?? d.n_entries ?? entries.length) || null
-          : null,
-      };
-    },
-  );
-  ipcMain.handle("files:chooseFolder", async () => {
-    const r = await dialog.showOpenDialog(win!, {
-      properties: ["openDirectory", "createDirectory"],
-    });
-    return r.canceled ? null : r.filePaths[0];
+      const data = isCollection ? probe : JSON.parse(await runYtDlp(["--dump-single-json", "--no-playlist", "--skip-download", url]));
+      const formats = (data.formats ?? []).filter((format: any) => format.vcodec && format.vcodec !== "none" && format.height).map((format: any) => ({
+        id: String(format.format_id), label: `${format.height}p${format.fps ? ` · ${format.fps} fps` : ""} · ${format.ext}`,
+        height: format.height ?? null, ext: format.ext ?? "", fps: format.fps ?? null, size: format.filesize ?? format.filesize_approx ?? null,
+      })).sort((a: any, b: any) => b.height - a.height);
+      return { url, title: data.title ?? "Sans titre", author: data.uploader ?? data.channel ?? "", duration: data.duration ?? 0,
+        thumbnail: typeof data.thumbnail === "string" && data.thumbnail.startsWith("https://") ? data.thumbnail : null,
+        platform: data.extractor_key ?? "", formats: [...new Map(formats.map((format: any) => [`${format.height}-${format.ext}`, format])).values()] as any,
+        isCollection, itemCount: isCollection ? Number(data.playlist_count ?? data.n_entries ?? entries.length) || null : null };
+    } catch (error) { throw Error(friendlyError(error)); }
   });
-  ipcMain.handle("history:list", history);
-  ipcMain.handle("history:clear", async () => {
-    await writeFile(hist(), "[]", "utf8");
-  });
-  ipcMain.handle("media:download", async (_e, r: DownloadRequest) => {
-    const u = url(r.url);
-    await mkdir(r.outputDir, { recursive: true });
-    const x: DownloadProgress = {
-      id: randomUUID(),
-      title: r.title,
-      percent: 0,
-      speed: "—",
-      eta: "—",
-      status: "downloading",
-    };
-    await save(x);
-    const a = [
-      "--newline",
-      "--ffmpeg-location",
-      ffmpeg(),
-      "-o",
-      join(r.outputDir, "%(title).180B [%(id)s].%(ext)s"),
-    ];
-    if (r.collection) {
-      const limit = Math.min(1000, Math.max(1, Math.trunc(r.maxItems ?? 50)));
-      a.push(
-        "--yes-playlist",
-        "--playlist-end",
-        String(limit),
-        "--download-archive",
-        join(r.outputDir, ".clipeo-archive.txt"),
-        "--ignore-errors",
-      );
-    } else {
-      a.push("--no-playlist");
-    }
-    r.mode === "video"
-      ? a.push(
-          "-f",
-          r.formatId ? `${r.formatId}+bestaudio/best` : "bv*+ba/best",
-          "--merge-output-format",
-          "mp4",
-        )
-      : r.mode === "thumbnail"
-        ? a.push(
-            "--skip-download",
-            "--write-thumbnail",
-            "--convert-thumbnails",
-            "jpg",
-          )
-        : a.push("-x", "--audio-format", r.mode, "--audio-quality", "0");
-    a.push(u);
-    const p = spawn(bin(), a, { windowsHide: true });
-    p.stdout.on("data", (d) => {
-      const m = String(d).match(
-        /\[download\]\s+([\d.]+)%.*?at\s+([^\s]+).*?ETA\s+([^\s]+)/,
-      );
-      if (m) {
-        x.percent = +m[1];
-        x.speed = m[2];
-        x.eta = m[3];
-        win?.webContents.send("media:progress", { ...x });
-      }
-    });
-    p.stderr.on("data", (d) => (x.message = String(d).slice(-500)));
-    p.on("close", async (c) => {
-      x.status = c === 0 ? "done" : "error";
-      if (!c) x.percent = 100;
-      await save(x);
-      win?.webContents.send("media:progress", { ...x });
-    });
-    return { id: x.id };
-  });
+  ipcMain.handle("files:chooseFolder", async () => { const result = await dialog.showOpenDialog(win!, { properties: ["openDirectory", "createDirectory"] }); return result.canceled ? null : result.filePaths[0]; });
+  ipcMain.handle("files:openFolder", async (_event, path: unknown) => { if (typeof path !== "string" || !path.trim()) throw Error("Dossier invalide."); await shell.openPath(resolve(path)); });
+  ipcMain.handle("history:list", listHistory);
+  ipcMain.handle("history:clear", clearHistory);
+  ipcMain.handle("media:download", async (_event, raw: unknown) => queueDownload(validateDownloadRequest(raw), win));
+  ipcMain.handle("media:cancel", (_event, id: unknown) => cancelDownload(id, win));
 });
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+
+app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });

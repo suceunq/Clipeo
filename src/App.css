@@ -6,6 +6,10 @@
   color: #edf6f2;
   background: #08110f;
 }
+
+.error-detail { color: #ff9b9b; max-width: 58rem; overflow-wrap: anywhere; }
+.queue article footer button { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
+.queue article footer button svg { width: 1rem; height: 1rem; }
 * {
   box-sizing: border-box;
 }
