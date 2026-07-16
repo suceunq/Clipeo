@@ -32,6 +32,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   await markInterrupted();
+  Menu.setApplicationMenu(null);
   createWindow();
   ipcMain.handle("media:analyze", async (_event, raw: unknown): Promise<MediaInfo> => {
     try {

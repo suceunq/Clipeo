@@ -18,6 +18,7 @@ export default function App() {
     [error, setError] = useState(""),
     [items, setItems] = useState<DownloadProgress[]>([]);
   useEffect(() => {
+    if (!window.clipeo) return;
     window.clipeo.history().then(setItems);
     return window.clipeo.onProgress((p) =>
       setItems((a) => {
