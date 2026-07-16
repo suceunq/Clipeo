@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Download, FolderOpen, Link, Mail, Music, Trash2, Video, X } from "lucide-react";
+import { Ban, Download, FolderOpen, Link, Mail, Music, Trash2, Video, X } from "lucide-react";
 import type {
   DownloadMode,
   DownloadProgress,
@@ -18,6 +18,7 @@ export default function App() {
     [error, setError] = useState(""),
     [items, setItems] = useState<DownloadProgress[]>([]);
   useEffect(() => {
+    if (!window.clipeo) return;
     window.clipeo.history().then(setItems);
     return window.clipeo.onProgress((p) =>
       setItems((a) => {
@@ -52,7 +53,9 @@ export default function App() {
     setItems([]);
   }
   async function download() {
-    if (info && folder)
+    if (!info || !folder) return;
+    try {
+      setError("");
       await window.clipeo.download({
         url: info.url,
         title: info.title,
@@ -62,6 +65,7 @@ export default function App() {
         collection: info.isCollection,
         maxItems,
       });
+    } catch (e) { setError(String(e).replace(/^Error: /, "")); }
   }
   return (
     <main>
@@ -170,6 +174,7 @@ export default function App() {
                 Choisir le dossier
               </button>
               <span>{folder || "Aucun dossier sélectionné"}</span>
+              {folder && <button onClick={() => void window.clipeo.openFolder(folder)}>Ouvrir</button>}
             </div>
             <button className="download" onClick={download} disabled={!folder}>
               <Download />
@@ -195,8 +200,13 @@ export default function App() {
                     ? "Terminé"
                     : x.status === "error"
                       ? "Erreur"
-                      : "Téléchargement en cours…"}
+                      : x.status === "cancelled"
+                        ? "Annulé"
+                        : x.status === "interrupted"
+                          ? "Interrompu"
+                          : x.status === "queued" ? "En attente…" : "Téléchargement en cours…"}
                 </small>
+                {x.message && (x.status === "error" || x.status === "interrupted") && <small className="error-detail">{x.message}</small>}
               </div>
               <div className="progress">
                 <span style={{ width: `${x.percent}%` }} />
@@ -204,6 +214,7 @@ export default function App() {
               <footer>
                 {x.percent.toFixed(0)}% <span>{x.speed}</span>
                 <span>Temps restant : {x.eta}</span>
+                {x.status === "downloading" && <button onClick={() => void window.clipeo.cancel(x.id)}><Ban />Annuler</button>}
               </footer>
             </article>
           ))

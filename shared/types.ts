@@ -33,6 +33,6 @@ export interface DownloadProgress {
   percent: number;
   speed: string;
   eta: string;
-  status: "queued" | "downloading" | "done" | "error";
+  status: "queued" | "downloading" | "done" | "error" | "cancelled" | "interrupted";
   message?: string;
 }

@@ -6,6 +6,10 @@
   color: #edf6f2;
   background: #08110f;
 }
+
+.error-detail { color: #ff9b9b; max-width: 58rem; overflow-wrap: anywhere; }
+.queue article footer button { margin-left: auto; display: inline-flex; align-items: center; gap: .35rem; }
+.queue article footer button svg { width: 1rem; height: 1rem; }
 * {
   box-sizing: border-box;
 }
@@ -63,7 +67,10 @@ header {
 }
 .brand h1 {
   margin: 0;
+  font-size: 32px;
+  line-height: 1;
 }
+.brand > div { display: grid; gap: 4px; text-align: left; }
 .brand p,
 .hero p {
   margin: 3px 0;
@@ -250,6 +257,8 @@ article footer {
   font-size: 12px;
 }
 @media (max-width: 750px) {
+  main > header { align-items: flex-start; gap: 16px; }
+  .header-actions { flex-direction: column; align-items: flex-end; }
   .media {
     grid-template-columns: 1fr;
   }
