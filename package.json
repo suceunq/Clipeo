@@ -1,7 +1,7 @@
 {
   "name": "clipeo",
   "private": true,
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Téléchargeur multimédia local et open source",
   "main": "dist-electron/electron/bootstrap.cjs",
   "type": "module",
@@ -63,9 +63,13 @@
     ],
     "win": {
       "target": "nsis",
+      "icon": "resources/clipeo-icon.ico",
       "artifactName": "Clipeo-Installation.${ext}"
     },
     "nsis": {
+      "installerIcon": "resources/clipeo-icon.ico",
+      "uninstallerIcon": "resources/clipeo-icon.ico",
+      "installerHeaderIcon": "resources/clipeo-icon.ico",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
