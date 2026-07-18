@@ -4,6 +4,7 @@ import type {
   MediaInfo,
   LocalePreference,
   LocaleSettings,
+  UpdateState,
 } from "../shared/types";
 declare global {
   interface Window {
@@ -17,6 +18,10 @@ declare global {
       clearHistory: () => Promise<void>;
       getLocale: () => Promise<LocaleSettings>;
       setLocale: (locale: LocalePreference) => Promise<LocaleSettings>;
+      getUpdateState: () => Promise<UpdateState>;
+      checkForUpdates: () => Promise<UpdateState>;
+      installUpdate: () => Promise<boolean>;
+      onUpdateState: (callback: (value: UpdateState) => void) => () => void;
       onProgress: (callback: (value: DownloadProgress) => void) => () => void;
     };
   }
