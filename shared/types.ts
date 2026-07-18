@@ -24,6 +24,14 @@ export interface LocaleSettings {
   locale: import("./i18n").AppLocale;
   preference: LocalePreference;
 }
+export type UpdatePhase = "idle" | "checking" | "available" | "downloading" | "ready" | "upToDate" | "error";
+export interface UpdateState {
+  phase: UpdatePhase;
+  currentVersion: string;
+  availableVersion?: string;
+  percent?: number;
+  message?: string;
+}
 export interface DownloadRequest {
   url: string;
   title: string;

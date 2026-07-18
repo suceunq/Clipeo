@@ -9,6 +9,14 @@ contextBridge.exposeInMainWorld("clipeo", {
   clearHistory: () => ipcRenderer.invoke("history:clear"),
   getLocale: () => ipcRenderer.invoke("settings:getLocale"),
   setLocale: (locale: unknown) => ipcRenderer.invoke("settings:setLocale", locale),
+  getUpdateState: () => ipcRenderer.invoke("update:getState"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  installUpdate: () => ipcRenderer.invoke("update:install"),
+  onUpdateState: (callback: (value: unknown) => void) => {
+    const listener = (_: unknown, value: unknown) => callback(value);
+    ipcRenderer.on("update:state", listener);
+    return () => ipcRenderer.removeListener("update:state", listener);
+  },
   onProgress: (callback: (value: unknown) => void) => {
     const listener = (_: unknown, value: unknown) => callback(value);
     ipcRenderer.on("media:progress", listener);

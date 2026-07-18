@@ -1,7 +1,7 @@
 {
   "name": "clipeo",
   "private": true,
-  "version": "0.1.11",
+  "version": "0.1.12",
   "description": "Téléchargeur multimédia local et open source",
   "main": "dist-electron/electron/bootstrap.cjs",
   "type": "module",
