@@ -48,7 +48,7 @@ header {
 .feedback-dialog label { display: grid; gap: 5px; margin-top: 12px; color: #86a69e; font-size: 12px; }
 .feedback-dialog input, .feedback-dialog textarea { width: 100%; padding: 10px; border: 1px solid #2a544a; border-radius: 8px; color: white; background: #10231e; resize: vertical; }
 .feedback-dialog select { width: 100%; padding: 10px; border: 1px solid #2a544a; border-radius: 8px; color: white; background: #10231e; }
-.settings-dialog { width: min(440px, 100%); }
+.settings-dialog { width: min(500px, 100%); max-height: calc(100vh - 40px); overflow-y: auto; }
 .update-settings { margin-top: 18px; padding-top: 16px; border-top: 1px solid #2a544a; }
 .update-settings h3 { margin: 0 0 6px; }
 .update-settings p { margin: 4px 0; color: #86a69e; font-size: 13px; }
@@ -56,6 +56,20 @@ header {
 .update-settings > button.send { border: 0; color: #05251b; background: #35dfa1; font-weight: 700; }
 .update-settings > button:disabled { opacity: .5; cursor: default; }
 .update-settings .progress { margin-bottom: 0; }
+.update-settings label { display: grid; gap: 5px; color: #86a69e; font-size: 12px; }
+.update-settings > button + button { margin-left: 8px; }
+.welcome-overlay { z-index: 60; }
+.welcome-dialog { width: min(560px, 100%); padding: 30px; border: 1px solid #2a5c4f; border-radius: 20px; text-align: center; background: #0b1815; box-shadow: 0 28px 90px #000c; }
+.welcome-mark { display: grid; place-items: center; width: 62px; height: 62px; margin: 0 auto 15px; border-radius: 20px; color: #05231b; background: linear-gradient(135deg, #38e6a5, #0b8f78); font-size: 28px; }
+.welcome-dialog h2 { margin: 0 0 18px; font-size: 28px; }
+.welcome-dialog p { margin: 9px 0; color: #a8c7bf; line-height: 1.5; }
+.welcome-dialog .welcome-support { color: #52efb6; }
+.welcome-checkbox { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 20px 0; color: #86a69e; font-size: 13px; }
+.welcome-dialog footer { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.welcome-dialog footer button { display: flex; justify-content: center; align-items: center; gap: 8px; padding: 12px 16px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+.welcome-dialog footer svg { width: 18px; }
+.welcome-dialog .donate { border: 0; color: #05251b; background: #35dfa1; }
+.welcome-dialog .later { border: 1px solid #2a5c4f; color: #52efb6; background: #10231e; }
 .feedback-dialog footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
 .feedback-dialog footer button { padding: 9px 14px; border: 1px solid #2a544a; border-radius: 8px; color: white; background: #10231e; }
 .feedback-dialog footer .send { border: 0; color: #05251b; background: #35dfa1; font-weight: 700; }
@@ -279,4 +293,5 @@ article footer {
   .legal {
     display: none;
   }
+  .welcome-dialog footer { grid-template-columns: 1fr; }
 }

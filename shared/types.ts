@@ -24,6 +24,11 @@ export interface LocaleSettings {
   locale: import("./i18n").AppLocale;
   preference: LocalePreference;
 }
+export interface AppSettings {
+  donationUrl: string;
+  showWelcome: boolean;
+}
+export type WelcomeDismissal = "later" | "never";
 export type UpdatePhase = "idle" | "checking" | "available" | "downloading" | "ready" | "upToDate" | "error";
 export interface UpdateState {
   phase: UpdatePhase;

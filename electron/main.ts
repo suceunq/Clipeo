@@ -5,7 +5,7 @@ import { runYtDlp, friendlyError } from "./services/ytdlp";
 import { secureUrl, validateDownloadRequest } from "./services/validation";
 import { cancelDownload, queueDownload } from "./services/download-manager";
 import { clearHistory, listHistory, markInterrupted } from "./services/history";
-import { getLocaleSettings, setLocalePreference } from "./services/settings";
+import { dismissWelcome, getAppSettings, getLocaleSettings, setDonationUrl, setLocalePreference } from "./services/settings";
 import { translate as t } from "../shared/i18n";
 
 let win: BrowserWindow | null = null;
@@ -61,6 +61,10 @@ app.whenReady().then(async () => {
   ipcMain.handle("media:cancel", (_event, id: unknown) => cancelDownload(id, win));
   ipcMain.handle("settings:getLocale", getLocaleSettings);
   ipcMain.handle("settings:setLocale", (_event, locale: unknown) => setLocalePreference(locale));
+  ipcMain.handle("settings:getApp", getAppSettings);
+  ipcMain.handle("settings:setDonationUrl", (_event, value: unknown) => setDonationUrl(value));
+  ipcMain.handle("welcome:dismiss", (_event, value: unknown) => dismissWelcome(value));
+  ipcMain.handle("donation:open", async () => { const settings = await getAppSettings(); await shell.openExternal(settings.donationUrl); return true; });
 });
 
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });
