@@ -44,7 +44,8 @@ export default function App() {
       return index < 0 ? [progress, ...current] : current.map((item) => item.id === progress.id ? progress : item);
     }));
     const removeUpdateState = window.clipeo.onUpdateState(setUpdateState);
-    return () => { removeProgress(); removeUpdateState(); };
+    const removeClipboardUrl = window.clipeo.onClipboardUrl((value) => setUrl((current) => current ? current : value));
+    return () => { removeProgress(); removeUpdateState(); removeClipboardUrl(); };
   }, []);
 
   async function changeLanguage(preference: LocalePreference) {

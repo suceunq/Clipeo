@@ -26,4 +26,9 @@ contextBridge.exposeInMainWorld("clipeo", {
     ipcRenderer.on("media:progress", listener);
     return () => ipcRenderer.removeListener("media:progress", listener);
   },
+  onClipboardUrl: (callback: (value: string) => void) => {
+    const listener = (_: unknown, value: string) => callback(value);
+    ipcRenderer.on("clipboard:url", listener);
+    return () => ipcRenderer.removeListener("clipboard:url", listener);
+  },
 });

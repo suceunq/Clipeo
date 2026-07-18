@@ -29,6 +29,7 @@ declare global {
       installUpdate: () => Promise<boolean>;
       onUpdateState: (callback: (value: UpdateState) => void) => () => void;
       onProgress: (callback: (value: DownloadProgress) => void) => () => void;
+      onClipboardUrl: (callback: (value: string) => void) => () => void;
     };
   }
 }

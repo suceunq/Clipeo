@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, shell, Menu } from "electron";
+import { app, BrowserWindow, clipboard, dialog, ipcMain, shell, Menu } from "electron";
 import { join, resolve } from "node:path";
 import type { MediaInfo } from "../shared/types";
 import { runYtDlp, friendlyError } from "./services/ytdlp";
@@ -10,6 +10,22 @@ import { translate as t } from "../shared/i18n";
 
 let win: BrowserWindow | null = null;
 const dev = !app.isPackaged;
+let lastSeenClipboardText = "";
+
+// Whenever the window regains focus (e.g. the user just copied a link elsewhere and switched
+// back), check the clipboard once for a URL the app could download and let the renderer decide
+// whether to auto-fill it (only into an empty field, never overwriting what's already typed).
+function checkClipboardForUrl() {
+  if (!win) return;
+  const text = clipboard.readText().trim();
+  if (!text || text === lastSeenClipboardText) return;
+  lastSeenClipboardText = text;
+  try {
+    win.webContents.send("clipboard:url", secureUrl(text));
+  } catch {
+    // pas une URL exploitable - rien a faire
+  }
+}
 
 app.on("web-contents-created", (_event, contents) => contents.on("context-menu", (_e, p) => {
   const items: Electron.MenuItemConstructorOptions[] = [];
@@ -45,12 +61,14 @@ function createWindow() {
     });
   }
   void (dev ? win.loadURL("http://localhost:5173") : win.loadFile(join(__dirname, "..", "..", "dist", "index.html")));
+  win.on("focus", checkClipboardForUrl);
 }
 
 app.whenReady().then(async () => {
   await markInterrupted();
   Menu.setApplicationMenu(null);
   createWindow();
+  win!.once("ready-to-show", checkClipboardForUrl);
   ipcMain.handle("media:analyze", async (_event, raw: unknown): Promise<MediaInfo> => {
     try {
       const url = secureUrl(raw);
