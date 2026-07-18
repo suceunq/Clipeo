@@ -6,6 +6,7 @@ import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { DownloadProgress, DownloadRequest } from "../../shared/types";
 import { binaries, friendlyError, spawnYtDlp } from "./ytdlp";
 import { saveProgress } from "./history";
+import { translate as t } from "../../shared/i18n";
 
 const active = new Map<string, { process: ChildProcessWithoutNullStreams; item: DownloadProgress }>();
 const pending: Array<() => void> = [];
@@ -54,7 +55,7 @@ function start(request: DownloadRequest, item: DownloadProgress, win: BrowserWin
   process.once("close", async (code) => {
     if (item.status !== "cancelled" && item.status !== "error") item.status = code === 0 ? "done" : "error";
     if (item.status === "done") { item.percent = 100; item.message = undefined; }
-    else if (item.status === "error") item.message = friendlyError(item.message || `Le téléchargement a échoué (${code}).`);
+    else if (item.status === "error") item.message = friendlyError(item.message || t("error.downloadFailed", { code: code ?? "?" }));
     await finish(item, win);
   });
 }
@@ -66,12 +67,12 @@ async function finish(item: DownloadProgress, win: BrowserWindow | null) {
 }
 
 export async function cancelDownload(id: unknown, win: BrowserWindow | null) {
-  if (typeof id !== "string") throw Error("Identifiant de téléchargement invalide.");
+  if (typeof id !== "string") throw Error(t("error.invalidDownloadId"));
   const current = active.get(id);
   if (!current) return false;
   const { process, item } = current;
   item.status = "cancelled";
-  item.message = "Téléchargement annulé.";
+  item.message = t("download.cancelledMessage");
   process.kill();
   await saveProgress(item); notify(win, item);
   return true;

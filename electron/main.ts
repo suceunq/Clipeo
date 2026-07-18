@@ -5,6 +5,8 @@ import { runYtDlp, friendlyError } from "./services/ytdlp";
 import { secureUrl, validateDownloadRequest } from "./services/validation";
 import { cancelDownload, queueDownload } from "./services/download-manager";
 import { clearHistory, listHistory, markInterrupted } from "./services/history";
+import { getLocaleSettings, setLocalePreference } from "./services/settings";
+import { translate as t } from "../shared/i18n";
 
 let win: BrowserWindow | null = null;
 const dev = !app.isPackaged;
@@ -12,11 +14,11 @@ const dev = !app.isPackaged;
 app.on("web-contents-created", (_event, contents) => contents.on("context-menu", (_e, p) => {
   const items: Electron.MenuItemConstructorOptions[] = [];
   if (p.isEditable) items.push(
-    { label: "Annuler", role: "undo", enabled: p.editFlags.canUndo }, { label: "Rétablir", role: "redo", enabled: p.editFlags.canRedo },
-    { type: "separator" }, { label: "Couper", role: "cut", enabled: p.editFlags.canCut }, { label: "Copier", role: "copy", enabled: p.editFlags.canCopy },
-    { label: "Coller", role: "paste", enabled: p.editFlags.canPaste }, { type: "separator" }, { label: "Tout sélectionner", role: "selectAll" },
-  ); else if (p.selectionText) items.push({ label: "Copier", role: "copy" });
-  if (p.linkURL?.startsWith("https://")) items.push({ type: "separator" }, { label: "Ouvrir le lien dans le navigateur", click: () => void shell.openExternal(p.linkURL) });
+    { label: t("context.undo"), role: "undo", enabled: p.editFlags.canUndo }, { label: t("context.redo"), role: "redo", enabled: p.editFlags.canRedo },
+    { type: "separator" }, { label: t("context.cut"), role: "cut", enabled: p.editFlags.canCut }, { label: t("context.copy"), role: "copy", enabled: p.editFlags.canCopy },
+    { label: t("context.paste"), role: "paste", enabled: p.editFlags.canPaste }, { type: "separator" }, { label: t("context.selectAll"), role: "selectAll" },
+  ); else if (p.selectionText) items.push({ label: t("context.copy"), role: "copy" });
+  if (p.linkURL?.startsWith("https://")) items.push({ type: "separator" }, { label: t("context.openLink"), click: () => void shell.openExternal(p.linkURL) });
   if (items.length) Menu.buildFromTemplate(items).popup();
 }));
 
@@ -45,18 +47,20 @@ app.whenReady().then(async () => {
         id: String(format.format_id), label: `${format.height}p${format.fps ? ` · ${format.fps} fps` : ""} · ${format.ext}`,
         height: format.height ?? null, ext: format.ext ?? "", fps: format.fps ?? null, size: format.filesize ?? format.filesize_approx ?? null,
       })).sort((a: any, b: any) => b.height - a.height);
-      return { url, title: data.title ?? "Sans titre", author: data.uploader ?? data.channel ?? "", duration: data.duration ?? 0,
+      return { url, title: data.title ?? t("media.untitled"), author: data.uploader ?? data.channel ?? "", duration: data.duration ?? 0,
         thumbnail: typeof data.thumbnail === "string" && data.thumbnail.startsWith("https://") ? data.thumbnail : null,
         platform: data.extractor_key ?? "", formats: [...new Map(formats.map((format: any) => [`${format.height}-${format.ext}`, format])).values()] as any,
         isCollection, itemCount: isCollection ? Number(data.playlist_count ?? data.n_entries ?? entries.length) || null : null };
     } catch (error) { throw Error(friendlyError(error)); }
   });
   ipcMain.handle("files:chooseFolder", async () => { const result = await dialog.showOpenDialog(win!, { properties: ["openDirectory", "createDirectory"] }); return result.canceled ? null : result.filePaths[0]; });
-  ipcMain.handle("files:openFolder", async (_event, path: unknown) => { if (typeof path !== "string" || !path.trim()) throw Error("Dossier invalide."); await shell.openPath(resolve(path)); });
+  ipcMain.handle("files:openFolder", async (_event, path: unknown) => { if (typeof path !== "string" || !path.trim()) throw Error(t("error.invalidFolder")); await shell.openPath(resolve(path)); });
   ipcMain.handle("history:list", listHistory);
   ipcMain.handle("history:clear", clearHistory);
   ipcMain.handle("media:download", async (_event, raw: unknown) => queueDownload(validateDownloadRequest(raw), win));
   ipcMain.handle("media:cancel", (_event, id: unknown) => cancelDownload(id, win));
+  ipcMain.handle("settings:getLocale", getLocaleSettings);
+  ipcMain.handle("settings:setLocale", (_event, locale: unknown) => setLocalePreference(locale));
 });
 
 app.on("window-all-closed", () => { if (process.platform !== "darwin") app.quit(); });

@@ -1,7 +1,7 @@
 {
   "name": "clipeo",
   "private": true,
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "Téléchargeur multimédia local et open source",
   "main": "dist-electron/electron/bootstrap.cjs",
   "type": "module",
@@ -70,6 +70,13 @@
       "installerIcon": "resources/clipeo-icon.ico",
       "uninstallerIcon": "resources/clipeo-icon.ico",
       "installerHeaderIcon": "resources/clipeo-icon.ico",
+      "installerLanguages": [
+        "fr_FR",
+        "en_US",
+        "es_ES",
+        "de_DE"
+      ],
+      "multiLanguageInstaller": true,
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

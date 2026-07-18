@@ -2,6 +2,7 @@ import { app } from "electron";
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { DownloadProgress } from "../../shared/types";
+import { translate as t } from "../../shared/i18n";
 
 const path = () => join(app.getPath("userData"), "history.json");
 let operationQueue = Promise.resolve();
@@ -31,7 +32,7 @@ export async function markInterrupted() {
     const items = await listHistory();
     let changed = false;
     for (const item of items) if (item.status === "queued" || item.status === "downloading") {
-      item.status = "interrupted"; item.message = "Téléchargement interrompu lors de la fermeture de l’application."; changed = true;
+      item.status = "interrupted"; item.message = t("download.interruptedMessage"); changed = true;
     }
     if (changed) await write(items);
   });

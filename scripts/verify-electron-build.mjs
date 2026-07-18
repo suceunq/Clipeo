@@ -30,7 +30,7 @@ if (packageType !== 'commonjs') {
   throw new Error('Build Electron invalide : les services Electron ne sont pas déclarés CommonJS.');
 }
 
-for (const name of ['ytdlp', 'validation', 'download-manager', 'history']) {
+for (const name of ['ytdlp', 'validation', 'download-manager', 'history', 'settings']) {
   const service = `${directory}/services/${name}.js`;
   if (!existsSync(service) || !readFileSync(service, 'utf8').includes('exports')) {
     throw new Error(`Build Electron invalide : service CommonJS absent ou incorrect (${service}).`);
