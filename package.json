@@ -1,7 +1,7 @@
 {
   "name": "clipeo",
   "private": true,
-  "version": "0.1.15",
+  "version": "0.2.0",
   "description": "Téléchargeur multimédia local et open source",
   "main": "dist-electron/electron/bootstrap.cjs",
   "type": "module",
@@ -81,9 +81,9 @@
         "de_DE"
       ],
       "multiLanguageInstaller": true,
-      "oneClick": false,
+      "oneClick": true,
       "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true
     },
     "publish": {

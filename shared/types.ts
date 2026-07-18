@@ -36,6 +36,7 @@ export interface UpdateState {
   percent?: number;
   message?: string;
 }
+export interface ReleaseNotes { version: string; notes: string }
 export interface DownloadRequest {
   url: string;
   title: string;

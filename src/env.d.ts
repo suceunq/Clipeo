@@ -4,7 +4,7 @@ import type {
   MediaInfo,
   LocalePreference,
   LocaleSettings,
-  UpdateState,
+  ReleaseNotes, UpdateState,
   AppSettings,
   WelcomeDismissal,
 } from "../shared/types";
@@ -24,6 +24,7 @@ declare global {
       dismissWelcome: (choice: WelcomeDismissal) => Promise<boolean>;
       openDonation: () => Promise<boolean>;
       getUpdateState: () => Promise<UpdateState>;
+      getReleaseNotes: () => Promise<ReleaseNotes | null>;
       checkForUpdates: () => Promise<UpdateState>;
       installUpdate: () => Promise<boolean>;
       onUpdateState: (callback: (value: UpdateState) => void) => () => void;
