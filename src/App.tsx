@@ -113,8 +113,20 @@ function WelcomeDialog({ t, onDonate, onLater }: { t: T; onDonate: (choice: Welc
     <footer><button className="donate" onClick={() => void onDonate(choice)}><Heart />{t("welcome.donate")}</button><button className="later" onClick={() => void onLater(choice)}>{t("welcome.later")}</button></footer></section></div>;
 }
 
+// electron-updater exposes GitHub releases' body via its Atom feed, which GitHub pre-renders to
+// HTML (<p>, <li>, ...) rather than the original Markdown - strip it down to plain lines so the
+// renderer below (which expects Markdown-ish text) doesn't print the raw tags on screen.
+function plainReleaseNotes(notes: string): string {
+  if (!notes.includes("<")) return notes;
+  const parsed = new DOMParser().parseFromString(notes, "text/html");
+  const lines: string[] = [];
+  parsed.querySelectorAll("h1, h2, h3, p").forEach((el) => { const text = el.textContent?.trim(); if (text) lines.push(text); });
+  parsed.querySelectorAll("li").forEach((el) => { const text = el.textContent?.trim(); if (text) lines.push(`- ${text}`); });
+  return lines.length ? lines.join("\n") : (parsed.body.textContent ?? "").trim();
+}
+
 function ReleaseNotesDialog({ t, value, onClose }: { t: T; value: ReleaseNotes; onClose: () => void }) {
-  return <div className="feedback-overlay release-notes-overlay" onClick={onClose}><section className="release-notes-dialog" onClick={(event) => event.stopPropagation()}><header><div><small>{t("releaseNotes.updated")}</small><h2>{t("releaseNotes.title", { version: value.version })}</h2></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header><div className="release-notes-content">{(value.notes || t("releaseNotes.fallback")).split(/\r?\n/).map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line.startsWith("- ") ? <p className="release-note-item" key={index}>• {line.slice(2)}</p> : line ? <p key={index}>{line.replace(/^#+\s*/, "")}</p> : <br key={index} />)}</div><footer><button className="send" onClick={onClose}>{t("releaseNotes.close")}</button></footer></section></div>;
+  return <div className="feedback-overlay release-notes-overlay" onClick={onClose}><section className="release-notes-dialog" onClick={(event) => event.stopPropagation()}><header><div><small>{t("releaseNotes.updated")}</small><h2>{t("releaseNotes.title", { version: value.version })}</h2></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header><div className="release-notes-content">{plainReleaseNotes(value.notes || t("releaseNotes.fallback")).split(/\r?\n/).map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line.startsWith("- ") ? <p className="release-note-item" key={index}>• {line.slice(2)}</p> : line ? <p key={index}>{line.replace(/^#+\s*/, "")}</p> : <br key={index} />)}</div><footer><button className="send" onClick={onClose}>{t("releaseNotes.close")}</button></footer></section></div>;
 }
 
 function FeedbackDialog({ t, onClose }: { t: T; onClose: () => void }) {
