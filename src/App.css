@@ -38,6 +38,8 @@ header {
 .icon-button svg { width: 18px; }
 .feedback-button { display: flex; align-items: center; gap: 7px; border: 1px solid #2a5c4f; border-radius: 10px; padding: 9px 12px; color: #52efb6; background: #0d1c18; cursor: pointer; }
 .feedback-button svg { width: 16px; }
+.update-toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 70; padding: 11px 18px; border: 1px solid #2a5c4f; border-radius: 10px; background: #0d1c18; color: #a8c7bf; box-shadow: 0 12px 30px #000a; font-size: .9rem; animation: update-toast-fade .3s ease; }
+@keyframes update-toast-fade { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 .feedback-overlay { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: #000a; }
 .feedback-dialog { width: min(520px, 100%); padding: 20px; border: 1px solid #2a544a; border-radius: 16px; background: #0b1815; box-shadow: 0 24px 70px #000b; }
 .feedback-dialog header { margin-bottom: 16px; }

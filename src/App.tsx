@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Ban, Download, FolderOpen, Heart, Link, Mail, Music, Settings, Trash2, Video, X } from "lucide-react";
 import type { AppSettings, DownloadMode, DownloadProgress, LocalePreference, MediaInfo, ReleaseNotes, UpdateState, WelcomeDismissal } from "../shared/types";
 import { normalizeLocale, supportedLocales, translate, type AppLocale, type TranslationKey } from "../shared/i18n";
@@ -13,12 +13,24 @@ export default function App() {
     [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""), [busy, setBusy] = useState(false),
     [feedbackOpen, setFeedbackOpen] = useState(false), [settingsOpen, setSettingsOpen] = useState(false), [error, setError] = useState(""),
     [items, setItems] = useState<DownloadProgress[]>([]), [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle", currentVersion: "—" }),
-    [, setAppSettings] = useState<AppSettings>({ showWelcome: false }), [welcomeOpen, setWelcomeOpen] = useState(false), [releaseNotes, setReleaseNotes] = useState<ReleaseNotes | null>(null);
+    [, setAppSettings] = useState<AppSettings>({ showWelcome: false }), [welcomeOpen, setWelcomeOpen] = useState(false), [releaseNotes, setReleaseNotes] = useState<ReleaseNotes | null>(null),
+    [updateToastVisible, setUpdateToastVisible] = useState(false);
+  const updateToastShown = useRef(false);
 
   useEffect(() => {
     document.documentElement.lang = locale;
     document.title = "Clipéo";
   }, [locale]);
+
+  // Brief, self-dismissing heads-up the first time a background download starts - the install
+  // itself stays fully silent, this just tells the user something is happening.
+  useEffect(() => {
+    if (updateState.phase !== "downloading" || updateToastShown.current) return;
+    updateToastShown.current = true;
+    setUpdateToastVisible(true);
+    const timer = setTimeout(() => setUpdateToastVisible(false), 3000);
+    return () => clearTimeout(timer);
+  }, [updateState.phase]);
 
   useEffect(() => {
     if (!window.clipeo) return;
@@ -55,6 +67,7 @@ export default function App() {
   async function dismissWelcome(choice: WelcomeDismissal) { await window.clipeo.dismissWelcome(choice); setWelcomeOpen(false); }
 
   return <main>
+    {updateToastVisible && <div className="update-toast" role="status">{t("update.downloadingToast")}</div>}
     <header>
       <div className="brand"><span>▶</span><div><h1>Clipéo</h1><p>{t("brand.tagline")}</p></div></div>
       <div className="header-actions">
