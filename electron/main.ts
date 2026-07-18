@@ -29,6 +29,21 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => { if (url.startsWith("https://")) void shell.openExternal(url); return { action: "deny" }; });
   win.webContents.on("will-navigate", (event) => event.preventDefault());
   win.webContents.session.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
+  if (!dev) {
+    // La balise <meta> CSP embarquee dans index.html conserve les exceptions du serveur de dev
+    // (partagees avec le build packagee) ; cet en-tete plus strict s'applique en intersection et
+    // les retire effectivement en production, ou aucun serveur de dev n'existe.
+    win.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [
+            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+          ],
+        },
+      });
+    });
+  }
   void (dev ? win.loadURL("http://localhost:5173") : win.loadFile(join(__dirname, "..", "..", "dist", "index.html")));
 }
 
