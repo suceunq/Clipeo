@@ -1,29 +1,30 @@
 import { resolve } from "node:path";
 import type { DownloadMode, DownloadRequest } from "../../shared/types";
+import { translate as t } from "../../shared/i18n";
 
 const modes = new Set<DownloadMode>(["video", "mp3", "m4a", "wav", "thumbnail"]);
 
 export function secureUrl(raw: unknown) {
-  if (typeof raw !== "string" || raw.length > 4096) throw Error("L’URL fournie est invalide.");
+  if (typeof raw !== "string" || raw.length > 4096) throw Error(t("error.invalidUrl"));
   const value = new URL(raw.trim());
   if (value.protocol !== "https:" || value.username || value.password)
-    throw Error("Seules les URL HTTPS sans identifiants sont acceptées.");
+    throw Error(t("error.httpsOnly"));
   return value.toString();
 }
 
 export function validateDownloadRequest(raw: unknown): DownloadRequest {
-  if (!raw || typeof raw !== "object") throw Error("Demande de téléchargement invalide.");
+  if (!raw || typeof raw !== "object") throw Error(t("error.invalidRequest"));
   const value = raw as Record<string, unknown>;
   const mode = value.mode as DownloadMode;
-  if (!modes.has(mode)) throw Error("Format de téléchargement invalide.");
+  if (!modes.has(mode)) throw Error(t("error.invalidMode"));
   if (typeof value.outputDir !== "string" || !value.outputDir.trim() || value.outputDir.length > 1024)
-    throw Error("Dossier de destination invalide.");
+    throw Error(t("error.invalidFolder"));
   if (typeof value.title !== "string" || !value.title.trim() || value.title.length > 500)
-    throw Error("Titre du média invalide.");
+    throw Error(t("error.invalidTitle"));
   if (value.formatId !== undefined && (typeof value.formatId !== "string" || !/^[\w.-]+$/.test(value.formatId)))
-    throw Error("Qualité vidéo invalide.");
+    throw Error(t("error.invalidQuality"));
   const maxItems = value.maxItems === undefined ? 50 : Number(value.maxItems);
-  if (!Number.isFinite(maxItems)) throw Error("Limite de collection invalide.");
+  if (!Number.isFinite(maxItems)) throw Error(t("error.invalidLimit"));
   return {
     url: secureUrl(value.url),
     title: value.title,

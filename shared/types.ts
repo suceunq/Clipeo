@@ -18,6 +18,12 @@ export interface MediaInfo {
   itemCount: number | null;
 }
 export type DownloadMode = "video" | "mp3" | "m4a" | "wav" | "thumbnail";
+export type { AppLocale } from "./i18n";
+export type LocalePreference = import("./i18n").AppLocale | "system";
+export interface LocaleSettings {
+  locale: import("./i18n").AppLocale;
+  preference: LocalePreference;
+}
 export interface DownloadRequest {
   url: string;
   title: string;

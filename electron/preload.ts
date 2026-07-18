@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("clipeo", {
   openFolder: (path: string) => ipcRenderer.invoke("files:openFolder", path),
   history: () => ipcRenderer.invoke("history:list"),
   clearHistory: () => ipcRenderer.invoke("history:clear"),
+  getLocale: () => ipcRenderer.invoke("settings:getLocale"),
+  setLocale: (locale: unknown) => ipcRenderer.invoke("settings:setLocale", locale),
   onProgress: (callback: (value: unknown) => void) => {
     const listener = (_: unknown, value: unknown) => callback(value);
     ipcRenderer.on("media:progress", listener);

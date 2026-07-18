@@ -1,237 +1,104 @@
 import { useEffect, useState } from "react";
-import { Ban, Download, FolderOpen, Link, Mail, Music, Trash2, Video, X } from "lucide-react";
-import type {
-  DownloadMode,
-  DownloadProgress,
-  MediaInfo,
-} from "../shared/types";
+import { Ban, Download, FolderOpen, Link, Mail, Music, Settings, Trash2, Video, X } from "lucide-react";
+import type { DownloadMode, DownloadProgress, LocalePreference, MediaInfo } from "../shared/types";
+import { normalizeLocale, supportedLocales, translate, type AppLocale, type TranslationKey } from "../shared/i18n";
 import "./App.css";
+
 export default function App() {
-  const [url, setUrl] = useState(""),
-    [info, setInfo] = useState<MediaInfo | null>(null),
-    [mode, setMode] = useState<DownloadMode>("video"),
-    [format, setFormat] = useState(""),
-    [maxItems, setMaxItems] = useState(50),
-    [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""),
-    [busy, setBusy] = useState(false),
-    [feedbackOpen, setFeedbackOpen] = useState(false),
-    [error, setError] = useState(""),
+  const [locale, setLocale] = useState<AppLocale>(() => normalizeLocale(navigator.language));
+  const [localePreference, setLocalePreference] = useState<LocalePreference>("system");
+  const t = (key: TranslationKey, values?: Record<string, string | number>) => translate(key, values, locale);
+  const [url, setUrl] = useState(""), [info, setInfo] = useState<MediaInfo | null>(null), [mode, setMode] = useState<DownloadMode>("video"),
+    [format, setFormat] = useState(""), [maxItems, setMaxItems] = useState(50),
+    [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""), [busy, setBusy] = useState(false),
+    [feedbackOpen, setFeedbackOpen] = useState(false), [settingsOpen, setSettingsOpen] = useState(false), [error, setError] = useState(""),
     [items, setItems] = useState<DownloadProgress[]>([]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.title = "Clipéo";
+  }, [locale]);
+
   useEffect(() => {
     if (!window.clipeo) return;
-    window.clipeo.history().then(setItems);
-    return window.clipeo.onProgress((p) =>
-      setItems((a) => {
-        const i = a.findIndex((x) => x.id === p.id);
-        return i < 0 ? [p, ...a] : a.map((x) => (x.id === p.id ? p : x));
-      }),
-    );
+    void window.clipeo.getLocale().then((settings) => { setLocale(settings.locale); setLocalePreference(settings.preference); });
+    void window.clipeo.history().then(setItems);
+    return window.clipeo.onProgress((progress) => setItems((current) => {
+      const index = current.findIndex((item) => item.id === progress.id);
+      return index < 0 ? [progress, ...current] : current.map((item) => item.id === progress.id ? progress : item);
+    }));
   }, []);
+
+  async function changeLanguage(preference: LocalePreference) {
+    if (!window.clipeo) { setLocalePreference(preference); setLocale(preference === "system" ? normalizeLocale(navigator.language) : preference); return; }
+    const settings = await window.clipeo.setLocale(preference);
+    setLocale(settings.locale); setLocalePreference(settings.preference);
+  }
+
   async function analyze() {
-    try {
-      setBusy(true);
-      setError("");
-      const x = await window.clipeo.analyze(url);
-      setInfo(x);
-      setFormat(x.formats[0]?.id ?? "");
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(false);
-    }
+    try { setBusy(true); setError(""); const result = await window.clipeo.analyze(url); setInfo(result); setFormat(result.formats[0]?.id ?? ""); }
+    catch (cause) { setError(cleanError(cause)); } finally { setBusy(false); }
   }
-  async function choose() {
-    const x = await window.clipeo.chooseFolder();
-    if (x) {
-      setFolder(x);
-      localStorage.setItem("clipeo:download-folder", x);
-    }
-  }
-  async function clearHistory() {
-    if (!window.confirm("Effacer tout l’historique ? Les fichiers téléchargés seront conservés.")) return;
-    await window.clipeo.clearHistory();
-    setItems([]);
-  }
+  async function choose() { const selected = await window.clipeo.chooseFolder(); if (selected) { setFolder(selected); localStorage.setItem("clipeo:download-folder", selected); } }
+  async function clearHistory() { if (!window.confirm(t("queue.clearConfirm"))) return; await window.clipeo.clearHistory(); setItems([]); }
   async function download() {
     if (!info || !folder) return;
-    try {
-      setError("");
-      await window.clipeo.download({
-        url: info.url,
-        title: info.title,
-        mode,
-        formatId: format,
-        outputDir: folder,
-        collection: info.isCollection,
-        maxItems,
-      });
-    } catch (e) { setError(String(e).replace(/^Error: /, "")); }
+    try { setError(""); await window.clipeo.download({ url: info.url, title: info.title, mode, formatId: format, outputDir: folder, collection: info.isCollection, maxItems }); }
+    catch (cause) { setError(cleanError(cause)); }
   }
-  return (
-    <main>
-      <header>
-        <div className="brand">
-          <span>▶</span>
-          <div>
-            <h1>Clipéo</h1>
-            <p>Vos médias, simplement.</p>
-          </div>
-        </div>
-        <div className="header-actions"><button className="feedback-button" onClick={() => setFeedbackOpen(true)}><Mail />Suggestion / Correction</button><div className="legal">Contenus personnels, libres ou autorisés uniquement</div></div>
-      </header>
-      <section className="hero">
-        <h2>Collez. Choisissez. Téléchargez.</h2>
-        <p>
-          Vidéo, audio, miniature et qualité au choix — traitement entièrement
-          local.
-        </p>
-        <div className="urlbar">
-          <Link />
-          <input
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Collez une URL YouTube, TikTok, Instagram…"
-          />
-          <button onClick={analyze} disabled={busy}>
-            {busy ? "Analyse…" : "Analyser"}
-          </button>
-        </div>
-        {error && <div className="error">{error}</div>}
-      </section>
-      {info && (
-        <section className="card media">
-          {info.thumbnail && <img src={info.thumbnail} />}
-          <div className="details">
-            <small>{info.platform}</small>
-            <h3>{info.title}</h3>
-            <p>
-              {info.author}
-              {info.isCollection
-                ? ` · Collection${info.itemCount ? ` · ${info.itemCount} élément(s)` : ""}`
-                : ` · ${Math.floor(info.duration / 60)} min ${Math.round(info.duration % 60)} s`}
-            </p>
-            <div className="modes">
-              <button
-                className={mode === "video" ? "active" : ""}
-                onClick={() => setMode("video")}
-              >
-                <Video />
-                Vidéo
-              </button>
-              {(["mp3", "m4a", "wav"] as DownloadMode[]).map((x) => (
-                <button
-                  key={x}
-                  className={mode === x ? "active" : ""}
-                  onClick={() => setMode(x)}
-                >
-                  <Music />
-                  {x.toUpperCase()}
-                </button>
-              ))}
-              <button
-                className={mode === "thumbnail" ? "active" : ""}
-                onClick={() => setMode("thumbnail")}
-              >
-                Miniature
-              </button>
-            </div>
-            {mode === "video" && (
-              <select
-                value={format}
-                onChange={(e) => setFormat(e.target.value)}
-              >
-                {info.formats.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.label}
-                    {f.size ? ` · ${(f.size / 1048576).toFixed(0)} Mo` : ""}
-                  </option>
-                ))}
-              </select>
-            )}
-            {info.isCollection && (
-              <div className="batch-options">
-                <div>
-                  <strong>Téléchargement groupé</strong>
-                  <small>
-                    Playlist, chaîne ou profil public. Les éléments déjà téléchargés seront ignorés.
-                  </small>
-                </div>
-                <label>
-                  Limite
-                  <input
-                    type="number"
-                    min="1"
-                    max="1000"
-                    value={maxItems}
-                    onChange={(e) => setMaxItems(Math.min(1000, Math.max(1, Number(e.target.value) || 1)))}
-                  />
-                </label>
-              </div>
-            )}
-            <div className="destination">
-              <button onClick={choose}>
-                <FolderOpen />
-                Choisir le dossier
-              </button>
-              <span>{folder || "Aucun dossier sélectionné"}</span>
-              {folder && <button onClick={() => void window.clipeo.openFolder(folder)}>Ouvrir</button>}
-            </div>
-            <button className="download" onClick={download} disabled={!folder}>
-              <Download />
-              {info.isCollection ? `Télécharger jusqu’à ${maxItems} éléments` : "Télécharger"}
-            </button>
-          </div>
-        </section>
-      )}
-      <section className="queue">
-        <div className="queue-title">
-          <h2>Téléchargements</h2>
-          {items.length > 0 && <button onClick={clearHistory}><Trash2 />Effacer l’historique</button>}
-        </div>
-        {items.length === 0 ? (
-          <p className="empty">Aucun téléchargement pour le moment.</p>
-        ) : (
-          items.map((x) => (
-            <article key={x.id}>
-              <div>
-                <strong>{x.title}</strong>
-                <small>
-                  {x.status === "done"
-                    ? "Terminé"
-                    : x.status === "error"
-                      ? "Erreur"
-                      : x.status === "cancelled"
-                        ? "Annulé"
-                        : x.status === "interrupted"
-                          ? "Interrompu"
-                          : x.status === "queued" ? "En attente…" : "Téléchargement en cours…"}
-                </small>
-                {x.message && (x.status === "error" || x.status === "interrupted") && <small className="error-detail">{x.message}</small>}
-              </div>
-              <div className="progress">
-                <span style={{ width: `${x.percent}%` }} />
-              </div>
-              <footer>
-                {x.percent.toFixed(0)}% <span>{x.speed}</span>
-                <span>Temps restant : {x.eta}</span>
-                {x.status === "downloading" && <button onClick={() => void window.clipeo.cancel(x.id)}><Ban />Annuler</button>}
-              </footer>
-            </article>
-          ))
-        )}
-      </section>
-      {feedbackOpen && <FeedbackDialog onClose={() => setFeedbackOpen(false)} />}
-    </main>
-  );
+
+  return <main>
+    <header>
+      <div className="brand"><span>▶</span><div><h1>Clipéo</h1><p>{t("brand.tagline")}</p></div></div>
+      <div className="header-actions">
+        <button className="icon-button" aria-label={t("settings.title")} title={t("settings.title")} onClick={() => setSettingsOpen(true)}><Settings /></button>
+        <button className="feedback-button" onClick={() => setFeedbackOpen(true)}><Mail />{t("feedback.button")}</button>
+        <div className="legal">{t("legal.notice")}</div>
+      </div>
+    </header>
+    <section className="hero">
+      <h2>{t("hero.title")}</h2><p>{t("hero.subtitle")}</p>
+      <div className="urlbar"><Link /><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t("hero.placeholder")} />
+        <button onClick={analyze} disabled={busy}>{busy ? t("hero.analyzing") : t("hero.analyze")}</button></div>
+      {error && <div className="error">{error}</div>}
+    </section>
+    {info && <section className="card media">
+      {info.thumbnail && <img src={info.thumbnail} alt="" />}
+      <div className="details"><small>{info.platform}</small><h3>{info.title}</h3>
+        <p>{info.author}{info.isCollection ? ` · ${t("media.collection")}${info.itemCount ? ` · ${t("media.items", { count: info.itemCount })}` : ""}` : ` · ${t("media.duration", { minutes: Math.floor(info.duration / 60), seconds: Math.round(info.duration % 60) })}`}</p>
+        <div className="modes"><button className={mode === "video" ? "active" : ""} onClick={() => setMode("video")}><Video />{t("mode.video")}</button>
+          {(["mp3", "m4a", "wav"] as DownloadMode[]).map((value) => <button key={value} className={mode === value ? "active" : ""} onClick={() => setMode(value)}><Music />{value.toUpperCase()}</button>)}
+          <button className={mode === "thumbnail" ? "active" : ""} onClick={() => setMode("thumbnail")} >{t("mode.thumbnail")}</button></div>
+        {mode === "video" && <select value={format} onChange={(event) => setFormat(event.target.value)}>{info.formats.map((value) => <option key={value.id} value={value.id}>{value.label}{value.size ? ` · ${t("size.mb", { size: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value.size / 1048576) })}` : ""}</option>)}</select>}
+        {info.isCollection && <div className="batch-options"><div><strong>{t("batch.title")}</strong><small>{t("batch.description")}</small></div><label>{t("batch.limit")}<input type="number" min="1" max="1000" value={maxItems} onChange={(event) => setMaxItems(Math.min(1000, Math.max(1, Number(event.target.value) || 1)))} /></label></div>}
+        <div className="destination"><button onClick={choose}><FolderOpen />{t("folder.choose")}</button><span>{folder || t("folder.none")}</span>{folder && <button onClick={() => void window.clipeo.openFolder(folder)}>{t("folder.open")}</button>}</div>
+        <button className="download" onClick={download} disabled={!folder}><Download />{info.isCollection ? t("download.collectionAction", { count: maxItems }) : t("download.action")}</button>
+      </div>
+    </section>}
+    <section className="queue"><div className="queue-title"><h2>{t("queue.title")}</h2>{items.length > 0 && <button onClick={clearHistory}><Trash2 />{t("queue.clear")}</button>}</div>
+      {items.length === 0 ? <p className="empty">{t("queue.empty")}</p> : items.map((item) => <article key={item.id}><div><strong>{item.title}</strong><small>{t(`status.${item.status}` as TranslationKey)}</small>{item.message && (item.status === "error" || item.status === "interrupted") && <small className="error-detail">{item.message}</small>}</div>
+        <div className="progress"><span style={{ width: `${item.percent}%` }} /></div><footer>{item.percent.toFixed(0)}% <span>{item.speed}</span><span>{t("queue.remaining", { eta: item.eta })}</span>{item.status === "downloading" && <button onClick={() => void window.clipeo.cancel(item.id)}><Ban />{t("queue.cancel")}</button>}</footer></article>)}</section>
+    {feedbackOpen && <FeedbackDialog t={t} onClose={() => setFeedbackOpen(false)} />}
+    {settingsOpen && <SettingsDialog t={t} locale={locale} preference={localePreference} onChange={changeLanguage} onClose={() => setSettingsOpen(false)} />}
+  </main>;
 }
 
-function FeedbackDialog({ onClose }: { onClose: () => void }) {
-  const [subject, setSubject] = useState("Clipéo - Suggestion / Correction");
-  const [message, setMessage] = useState("");
-  const [copied, setCopied] = useState(false);
-  const email = "bob62138@gmail.com";
-  const body = `${message}\n\nApplication : Clipéo`;
-  const send = () => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
-  const copy = async () => { await navigator.clipboard.writeText(`À : ${email}\nSujet : ${subject}\n\n${body}`); setCopied(true); };
-  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog" onClick={(e) => e.stopPropagation()}><header><div><h2>Suggestion / Correction</h2><p>Une idée ou un problème ? Écrivez-nous.</p></div><button onClick={onClose}><X /></button></header><label>Sujet<input value={subject} onChange={(e) => setSubject(e.target.value)} /></label><label>Message<textarea rows={7} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Décrivez votre suggestion ou les étapes du problème…" /></label>{copied && <p className="feedback-copied">Adresse et message copiés.</p>}<footer><button onClick={() => void copy()}>Copier</button><button className="send" disabled={!message.trim()} onClick={send}>Envoyer</button></footer></section></div>;
+type T = (key: TranslationKey, values?: Record<string, string | number>) => string;
+
+function SettingsDialog({ t, locale, preference, onChange, onClose }: { t: T; locale: AppLocale; preference: LocalePreference; onChange: (value: LocalePreference) => Promise<void>; onClose: () => void }) {
+  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog settings-dialog" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("settings.title")}</h2><p>{t("settings.description")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
+    <label>{t("settings.language")}<select value={preference} onChange={(event) => void onChange(event.target.value as LocalePreference)}><option value="system">{t("settings.auto")} ({t(`language.${locale}` as TranslationKey)})</option>{supportedLocales.map((value) => <option key={value} value={value}>{t(`language.${value}` as TranslationKey)}</option>)}</select></label>
+    <footer><button className="send" onClick={onClose}>{t("settings.close")}</button></footer></section></div>;
 }
+
+function FeedbackDialog({ t, onClose }: { t: T; onClose: () => void }) {
+  const [subject, setSubject] = useState(() => t("feedback.defaultSubject")), [message, setMessage] = useState(""), [copied, setCopied] = useState(false);
+  const email = "bob62138@gmail.com", body = `${message}\n\n${t("feedback.application")}`;
+  const send = () => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
+  const copy = async () => { await navigator.clipboard.writeText(`${t("feedback.mailTo")} : ${email}\n${t("feedback.mailSubject")} : ${subject}\n\n${body}`); setCopied(true); };
+  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("feedback.title")}</h2><p>{t("feedback.intro")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
+    <label>{t("feedback.subject")}<input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label>{t("feedback.message")}<textarea rows={7} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={t("feedback.placeholder")} /></label>
+    {copied && <p className="feedback-copied">{t("feedback.copied")}</p>}<footer><button onClick={() => void copy()}>{t("feedback.copy")}</button><button className="send" disabled={!message.trim()} onClick={send}>{t("feedback.send")}</button></footer></section></div>;
+}
+
+function cleanError(value: unknown) { return String(value).replace(/^Error: /, "").replace(/^Error invoking remote method '[^']+': Error: /, ""); }
