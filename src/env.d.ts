@@ -5,6 +5,8 @@ import type {
   LocalePreference,
   LocaleSettings,
   UpdateState,
+  AppSettings,
+  WelcomeDismissal,
 } from "../shared/types";
 declare global {
   interface Window {
@@ -18,6 +20,10 @@ declare global {
       clearHistory: () => Promise<void>;
       getLocale: () => Promise<LocaleSettings>;
       setLocale: (locale: LocalePreference) => Promise<LocaleSettings>;
+      getAppSettings: () => Promise<AppSettings>;
+      setDonationUrl: (url: string) => Promise<AppSettings>;
+      dismissWelcome: (choice: WelcomeDismissal) => Promise<boolean>;
+      openDonation: () => Promise<boolean>;
       getUpdateState: () => Promise<UpdateState>;
       checkForUpdates: () => Promise<UpdateState>;
       installUpdate: () => Promise<boolean>;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Ban, Download, FolderOpen, Link, Mail, Music, Settings, Trash2, Video, X } from "lucide-react";
-import type { DownloadMode, DownloadProgress, LocalePreference, MediaInfo, UpdateState } from "../shared/types";
+import { Ban, Download, FolderOpen, Heart, Link, Mail, Music, Settings, Trash2, Video, X } from "lucide-react";
+import type { AppSettings, DownloadMode, DownloadProgress, LocalePreference, MediaInfo, UpdateState, WelcomeDismissal } from "../shared/types";
 import { normalizeLocale, supportedLocales, translate, type AppLocale, type TranslationKey } from "../shared/i18n";
 import "./App.css";
 
@@ -12,7 +12,8 @@ export default function App() {
     [format, setFormat] = useState(""), [maxItems, setMaxItems] = useState(50),
     [folder, setFolder] = useState(() => localStorage.getItem("clipeo:download-folder") ?? ""), [busy, setBusy] = useState(false),
     [feedbackOpen, setFeedbackOpen] = useState(false), [settingsOpen, setSettingsOpen] = useState(false), [error, setError] = useState(""),
-    [items, setItems] = useState<DownloadProgress[]>([]), [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle", currentVersion: "—" });
+    [items, setItems] = useState<DownloadProgress[]>([]), [updateState, setUpdateState] = useState<UpdateState>({ phase: "idle", currentVersion: "—" }),
+    [appSettings, setAppSettings] = useState<AppSettings>({ donationUrl: "", showWelcome: false }), [welcomeOpen, setWelcomeOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -24,6 +25,7 @@ export default function App() {
     void window.clipeo.getLocale().then((settings) => { setLocale(settings.locale); setLocalePreference(settings.preference); });
     void window.clipeo.history().then(setItems);
     void window.clipeo.getUpdateState().then(setUpdateState);
+    void window.clipeo.getAppSettings().then((settings) => { setAppSettings(settings); setWelcomeOpen(settings.showWelcome); });
     const removeProgress = window.clipeo.onProgress((progress) => setItems((current) => {
       const index = current.findIndex((item) => item.id === progress.id);
       return index < 0 ? [progress, ...current] : current.map((item) => item.id === progress.id ? progress : item);
@@ -49,6 +51,7 @@ export default function App() {
     try { setError(""); await window.clipeo.download({ url: info.url, title: info.title, mode, formatId: format, outputDir: folder, collection: info.isCollection, maxItems }); }
     catch (cause) { setError(cleanError(cause)); }
   }
+  async function dismissWelcome(choice: WelcomeDismissal) { await window.clipeo.dismissWelcome(choice); setWelcomeOpen(false); }
 
   return <main>
     <header>
@@ -82,20 +85,32 @@ export default function App() {
       {items.length === 0 ? <p className="empty">{t("queue.empty")}</p> : items.map((item) => <article key={item.id}><div><strong>{item.title}</strong><small>{t(`status.${item.status}` as TranslationKey)}</small>{item.message && (item.status === "error" || item.status === "interrupted") && <small className="error-detail">{item.message}</small>}</div>
         <div className="progress"><span style={{ width: `${item.percent}%` }} /></div><footer>{item.percent.toFixed(0)}% <span>{item.speed}</span><span>{t("queue.remaining", { eta: item.eta })}</span>{item.status === "downloading" && <button onClick={() => void window.clipeo.cancel(item.id)}><Ban />{t("queue.cancel")}</button>}</footer></article>)}</section>
     {feedbackOpen && <FeedbackDialog t={t} onClose={() => setFeedbackOpen(false)} />}
-    {settingsOpen && <SettingsDialog t={t} locale={locale} preference={localePreference} updateState={updateState} onChange={changeLanguage} onCheck={() => window.clipeo.checkForUpdates()} onInstall={() => window.clipeo.installUpdate()} onClose={() => setSettingsOpen(false)} />}
+    {settingsOpen && <SettingsDialog t={t} locale={locale} preference={localePreference} updateState={updateState} donationUrl={appSettings.donationUrl} onChange={changeLanguage} onCheck={() => window.clipeo.checkForUpdates()} onInstall={() => window.clipeo.installUpdate()} onSaveDonation={async (value) => { const settings = await window.clipeo.setDonationUrl(value); setAppSettings(settings); }} onShowWelcome={() => { setSettingsOpen(false); setWelcomeOpen(true); }} onClose={() => setSettingsOpen(false)} />}
+    {welcomeOpen && <WelcomeDialog t={t} onDonate={async (choice) => { await window.clipeo.openDonation(); await dismissWelcome(choice); }} onLater={dismissWelcome} />}
   </main>;
 }
 
 type T = (key: TranslationKey, values?: Record<string, string | number>) => string;
 
-function SettingsDialog({ t, locale, preference, updateState, onChange, onCheck, onInstall, onClose }: { t: T; locale: AppLocale; preference: LocalePreference; updateState: UpdateState; onChange: (value: LocalePreference) => Promise<void>; onCheck: () => Promise<UpdateState>; onInstall: () => Promise<boolean>; onClose: () => void }) {
+function SettingsDialog({ t, locale, preference, updateState, donationUrl, onChange, onCheck, onInstall, onSaveDonation, onShowWelcome, onClose }: { t: T; locale: AppLocale; preference: LocalePreference; updateState: UpdateState; donationUrl: string; onChange: (value: LocalePreference) => Promise<void>; onCheck: () => Promise<UpdateState>; onInstall: () => Promise<boolean>; onSaveDonation: (value: string) => Promise<void>; onShowWelcome: () => void; onClose: () => void }) {
+  const [donation, setDonation] = useState(donationUrl), [saved, setSaved] = useState(false), [donationError, setDonationError] = useState("");
+  async function saveDonation() { try { setDonationError(""); await onSaveDonation(donation); setSaved(true); } catch (cause) { setDonationError(cleanError(cause)); } }
   return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog settings-dialog" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("settings.title")}</h2><p>{t("settings.description")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
     <label>{t("settings.language")}<select value={preference} onChange={(event) => void onChange(event.target.value as LocalePreference)}><option value="system">{t("settings.auto")} ({t(`language.${locale}` as TranslationKey)})</option>{supportedLocales.map((value) => <option key={value} value={value}>{t(`language.${value}` as TranslationKey)}</option>)}</select></label>
     <section className="update-settings"><h3>{t("update.section")}</h3><p>{t("update.currentVersion", { version: updateState.currentVersion })}</p><p className={`update-status ${updateState.phase === "error" ? "error" : ""}`}>{updateStatus(t, updateState)}</p>
       {updateState.phase === "ready" ? <button className="send" onClick={() => void onInstall()}>{t("update.installNow")}</button> : <button disabled={updateState.phase === "checking" || updateState.phase === "downloading"} onClick={() => void onCheck()}>{t("update.check")}</button>}
       {updateState.phase === "downloading" && <div className="progress"><span style={{ width: `${updateState.percent ?? 0}%` }} /></div>}
     </section>
+    <section className="update-settings"><h3>{t("settings.support")}</h3><label>{t("settings.donationUrl")}<input value={donation} onChange={(event) => { setDonation(event.target.value); setSaved(false); }} /></label>{donationError && <p className="error">{donationError}</p>}{saved && <p className="feedback-copied">{t("settings.saved")}</p>}<button onClick={() => void saveDonation()}>{t("settings.save")}</button><button onClick={onShowWelcome}>{t("settings.showWelcome")}</button></section>
     <footer><button className="send" onClick={onClose}>{t("settings.close")}</button></footer></section></div>;
+}
+
+function WelcomeDialog({ t, onDonate, onLater }: { t: T; onDonate: (choice: WelcomeDismissal) => Promise<void>; onLater: (choice: WelcomeDismissal) => Promise<void> }) {
+  const [never, setNever] = useState(false);
+  const choice = never ? "never" : "later";
+  return <div className="feedback-overlay welcome-overlay"><section className="welcome-dialog"><div className="welcome-mark">▶</div><h2>{t("welcome.title")}</h2><p>{t("welcome.description")}</p><p>{t("welcome.thanks")}</p><p className="welcome-support">{t("welcome.support")}</p>
+    <label className="welcome-checkbox"><input type="checkbox" checked={never} onChange={(event) => setNever(event.target.checked)} />{t("welcome.never")}</label>
+    <footer><button className="donate" onClick={() => void onDonate(choice)}><Heart />{t("welcome.donate")}</button><button className="later" onClick={() => void onLater(choice)}>{t("welcome.later")}</button></footer></section></div>;
 }
 
 function FeedbackDialog({ t, onClose }: { t: T; onClose: () => void }) {
