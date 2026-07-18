@@ -40,12 +40,12 @@ export async function setLocalePreference(value: unknown): Promise<LocaleSetting
 
 export async function getAppSettings(): Promise<AppSettings> {
   const saved = await readSettings();
-  return { showWelcome: !saved.welcomeNever && (!saved.welcomeAfter || saved.welcomeAfter <= Date.now()) };
+  return { showWelcome: !saved.welcomeNever };
 }
 export async function getDonationUrl() { const config = await readDistributionConfig(); return validateDonationUrl(config.donationUrl || "https://www.paypal.com/donate/"); }
 export async function dismissWelcome(value: unknown) {
   if (value !== "later" && value !== "never") throw Error(t("error.invalidWelcomeChoice"));
   const choice = value as WelcomeDismissal;
-  await writeSettings(choice === "never" ? { welcomeNever: true, welcomeAfter: undefined } : { welcomeNever: false, welcomeAfter: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+  await writeSettings(choice === "never" ? { welcomeNever: true, welcomeAfter: undefined } : { welcomeNever: false, welcomeAfter: undefined });
   return true;
 }
