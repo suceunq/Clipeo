@@ -281,6 +281,17 @@ article footer {
   color: #799b92;
   font-size: 12px;
 }
+.release-notes-dialog { width:min(540px,calc(100vw - 32px)); max-height:min(620px,calc(100vh - 40px)); padding:24px; overflow:hidden; border:1px solid #2a5b4e; border-radius:18px; background:#0b1916; box-shadow:0 24px 80px #000a; }
+.release-notes-dialog header { display:flex; align-items:flex-start; justify-content:space-between; gap:20px; }
+.release-notes-dialog header h2 { margin:4px 0 0; }
+.release-notes-dialog header small { color:#35dfa1; font-weight:700; }
+.release-notes-dialog header button { border:0; color:#9fc0b7; background:transparent; cursor:pointer; }
+.release-notes-dialog header svg { width:20px; }
+.release-notes-content { max-height:390px; margin:18px 0; padding-right:8px; overflow:auto; color:#b9d0ca; }
+.release-notes-content h3 { margin:18px 0 8px; color:white; }
+.release-notes-content p { margin:7px 0; line-height:1.55; }
+.release-note-item { padding-left:8px; }
+.release-notes-dialog footer { display:flex; justify-content:flex-end; }
 @media (max-width: 750px) {
   main > header { align-items: flex-start; gap: 16px; }
   .header-actions { flex-direction: column; align-items: flex-end; }

@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld("clipeo", {
   dismissWelcome: (choice: unknown) => ipcRenderer.invoke("welcome:dismiss", choice),
   openDonation: () => ipcRenderer.invoke("donation:open"),
   getUpdateState: () => ipcRenderer.invoke("update:getState"),
+  getReleaseNotes: () => ipcRenderer.invoke("update:getReleaseNotes"),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
   installUpdate: () => ipcRenderer.invoke("update:install"),
   onUpdateState: (callback: (value: unknown) => void) => {
