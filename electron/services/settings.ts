@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { normalizeLocale, setI18nLocale, supportedLocales, translate as t, type AppLocale } from "../../shared/i18n";
 import type { AppSettings, LocalePreference, LocaleSettings, WelcomeDismissal } from "../../shared/types";
 
-interface StoredSettings { language?: LocalePreference; donationUrl?: string; welcomeNever?: boolean; welcomeAfter?: number; }
+interface StoredSettings { language?: LocalePreference; welcomeNever?: boolean; welcomeAfter?: number; }
 interface DistributionConfig { donationUrl?: string; }
 const settingsPath = () => join(app.getPath("userData"), "settings.json");
 const configPath = () => app.isPackaged ? join(process.resourcesPath, "config.json") : join(__dirname, "..", "..", "..", "resources", "config.json");
@@ -39,11 +39,10 @@ export async function setLocalePreference(value: unknown): Promise<LocaleSetting
 }
 
 export async function getAppSettings(): Promise<AppSettings> {
-  const [saved, config] = await Promise.all([readSettings(), readDistributionConfig()]);
-  const donationUrl = validateDonationUrl(saved.donationUrl || config.donationUrl || "https://www.paypal.com/donate/");
-  return { donationUrl, showWelcome: !saved.welcomeNever && (!saved.welcomeAfter || saved.welcomeAfter <= Date.now()) };
+  const saved = await readSettings();
+  return { showWelcome: !saved.welcomeNever && (!saved.welcomeAfter || saved.welcomeAfter <= Date.now()) };
 }
-export async function setDonationUrl(value: unknown) { const donationUrl = validateDonationUrl(value); await writeSettings({ donationUrl }); return getAppSettings(); }
+export async function getDonationUrl() { const config = await readDistributionConfig(); return validateDonationUrl(config.donationUrl || "https://www.paypal.com/donate/"); }
 export async function dismissWelcome(value: unknown) {
   if (value !== "later" && value !== "never") throw Error(t("error.invalidWelcomeChoice"));
   const choice = value as WelcomeDismissal;
