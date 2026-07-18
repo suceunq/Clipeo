@@ -25,7 +25,6 @@ export interface LocaleSettings {
   preference: LocalePreference;
 }
 export interface AppSettings {
-  donationUrl: string;
   showWelcome: boolean;
 }
 export type WelcomeDismissal = "later" | "never";

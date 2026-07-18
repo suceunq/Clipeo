@@ -10,7 +10,6 @@ contextBridge.exposeInMainWorld("clipeo", {
   getLocale: () => ipcRenderer.invoke("settings:getLocale"),
   setLocale: (locale: unknown) => ipcRenderer.invoke("settings:setLocale", locale),
   getAppSettings: () => ipcRenderer.invoke("settings:getApp"),
-  setDonationUrl: (url: string) => ipcRenderer.invoke("settings:setDonationUrl", url),
   dismissWelcome: (choice: unknown) => ipcRenderer.invoke("welcome:dismiss", choice),
   openDonation: () => ipcRenderer.invoke("donation:open"),
   getUpdateState: () => ipcRenderer.invoke("update:getState"),

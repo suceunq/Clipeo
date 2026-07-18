@@ -21,7 +21,6 @@ declare global {
       getLocale: () => Promise<LocaleSettings>;
       setLocale: (locale: LocalePreference) => Promise<LocaleSettings>;
       getAppSettings: () => Promise<AppSettings>;
-      setDonationUrl: (url: string) => Promise<AppSettings>;
       dismissWelcome: (choice: WelcomeDismissal) => Promise<boolean>;
       openDonation: () => Promise<boolean>;
       getUpdateState: () => Promise<UpdateState>;
