@@ -89,7 +89,7 @@
     "publish": {
       "provider": "github",
       "owner": "suceunq",
-      "repo": "Clipeo"
+      "repo": "Clipeo-Updates"
     }
   }
 }
