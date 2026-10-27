@@ -69,6 +69,7 @@ export default function App() {
 
   return <main>
     {updateToastVisible && <div className="update-toast" role="status">{t("update.downloadingToast")}</div>}
+    {updateState.phase === "downloading" && <div className="update-banner" role="status"><span>{updateStatus(t, updateState)}</span><div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(updateState.percent ?? 0)}><span style={{ width: `${updateState.percent ?? 0}%` }} /></div></div>}
     <header>
       <div className="brand"><span>▶</span><div><h1>Clipéo</h1><p>{t("brand.tagline")}</p></div></div>
       <div className="header-actions">
@@ -79,9 +80,9 @@ export default function App() {
     </header>
     <section className="hero">
       <h2>{t("hero.title")}</h2><p>{t("hero.subtitle")}</p>
-      <div className="urlbar"><Link /><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t("hero.placeholder")} />
-        <button onClick={analyze} disabled={busy}>{busy ? t("hero.analyzing") : t("hero.analyze")}</button></div>
-      {error && <div className="error">{error}</div>}
+      <form className="urlbar" onSubmit={(event) => { event.preventDefault(); if (!busy && url.trim()) void analyze(); }}><Link /><input value={url} onChange={(event) => setUrl(event.target.value)} placeholder={t("hero.placeholder")} aria-label={t("hero.placeholder")} spellCheck={false} autoFocus />
+        <button type="submit" disabled={busy || !url.trim()}>{busy ? t("hero.analyzing") : t("hero.analyze")}</button></form>
+      {error && <div className="error" role="alert">{error}</div>}
     </section>
     {info && <section className="card media">
       {info.thumbnail && <img src={info.thumbnail} alt="" />}
@@ -97,8 +98,8 @@ export default function App() {
       </div>
     </section>}
     <section className="queue"><div className="queue-title"><h2>{t("queue.title")}</h2>{items.length > 0 && <button onClick={clearHistory}><Trash2 />{t("queue.clear")}</button>}</div>
-      {items.length === 0 ? <p className="empty">{t("queue.empty")}</p> : items.map((item) => <article key={item.id}><div><strong>{item.title}</strong><small>{t(`status.${item.status}` as TranslationKey)}</small>{item.message && (item.status === "error" || item.status === "interrupted") && <small className="error-detail">{item.message}</small>}</div>
-        <div className="progress"><span style={{ width: `${item.percent}%` }} /></div><footer>{item.percent.toFixed(0)}% <span>{item.speed}</span><span>{t("queue.remaining", { eta: item.eta })}</span>{item.status === "downloading" && <button onClick={() => void window.clipeo.cancel(item.id)}><Ban />{t("queue.cancel")}</button>}</footer></article>)}</section>
+      {items.length === 0 ? <p className="empty">{t("queue.empty")}</p> : items.map((item) => <article key={item.id} data-status={item.status}><div><strong>{item.title}</strong><small className="status-pill">{t(`status.${item.status}` as TranslationKey)}</small>{item.message && (item.status === "error" || item.status === "interrupted") && <small className="error-detail">{item.message}</small>}</div>
+        <div className="progress" role="progressbar" aria-label={item.title} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(item.percent)}><span style={{ width: `${item.percent}%` }} /></div><footer>{item.percent.toFixed(0)}% <span>{item.speed}</span><span>{t("queue.remaining", { eta: item.eta })}</span>{item.status === "downloading" && <button onClick={() => void window.clipeo.cancel(item.id)}><Ban />{t("queue.cancel")}</button>}</footer></article>)}</section>
     {feedbackOpen && <FeedbackDialog t={t} onClose={() => setFeedbackOpen(false)} />}
     {settingsOpen && <SettingsDialog t={t} locale={locale} preference={localePreference} updateState={updateState} onChange={changeLanguage} onCheck={() => window.clipeo.checkForUpdates()} onShowWelcome={() => { setSettingsOpen(false); setWelcomeOpen(true); }} onClose={() => setSettingsOpen(false)} />}
     {welcomeOpen && <WelcomeDialog t={t} onDonate={async (choice) => { await window.clipeo.openDonation(); await dismissWelcome(choice); }} onLater={dismissWelcome} />}
@@ -108,8 +109,17 @@ export default function App() {
 
 type T = (key: TranslationKey, values?: Record<string, string | number>) => string;
 
+function useEscape(onClose: () => void) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+}
+
 function SettingsDialog({ t, locale, preference, updateState, onChange, onCheck, onShowWelcome, onClose }: { t: T; locale: AppLocale; preference: LocalePreference; updateState: UpdateState; onChange: (value: LocalePreference) => Promise<void>; onCheck: () => Promise<UpdateState>; onShowWelcome: () => void; onClose: () => void }) {
-  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog settings-dialog" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("settings.title")}</h2><p>{t("settings.description")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
+  useEscape(onClose);
+  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog settings-dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("settings.title")}</h2><p>{t("settings.description")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
     <label>{t("settings.language")}<select value={preference} onChange={(event) => void onChange(event.target.value as LocalePreference)}><option value="system">{t("settings.auto")} ({t(`language.${locale}` as TranslationKey)})</option>{supportedLocales.map((value) => <option key={value} value={value}>{t(`language.${value}` as TranslationKey)}</option>)}</select></label>
     <section className="update-settings"><h3>{t("update.section")}</h3><p>{t("update.currentVersion", { version: updateState.currentVersion })}</p><p className={`update-status ${updateState.phase === "error" ? "error" : ""}`}>{updateStatus(t, updateState)}</p>
       <button disabled={updateState.phase === "checking" || updateState.phase === "downloading" || updateState.phase === "ready"} onClick={() => void onCheck()}>{t("update.check")}</button>
@@ -140,15 +150,17 @@ function plainReleaseNotes(notes: string): string {
 }
 
 function ReleaseNotesDialog({ t, value, onClose }: { t: T; value: ReleaseNotes; onClose: () => void }) {
-  return <div className="feedback-overlay release-notes-overlay" onClick={onClose}><section className="release-notes-dialog" onClick={(event) => event.stopPropagation()}><header><div><small>{t("releaseNotes.updated")}</small><h2>{t("releaseNotes.title", { version: value.version })}</h2></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header><div className="release-notes-content">{plainReleaseNotes(value.notes || t("releaseNotes.fallback")).split(/\r?\n/).map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line.startsWith("- ") ? <p className="release-note-item" key={index}>• {line.slice(2)}</p> : line ? <p key={index}>{line.replace(/^#+\s*/, "")}</p> : <br key={index} />)}</div><footer><button className="send" onClick={onClose}>{t("releaseNotes.close")}</button></footer></section></div>;
+  useEscape(onClose);
+  return <div className="feedback-overlay release-notes-overlay" onClick={onClose}><section className="release-notes-dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><header><div><small>{t("releaseNotes.updated")}</small><h2>{t("releaseNotes.title", { version: value.version })}</h2></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header><div className="release-notes-content">{plainReleaseNotes(value.notes || t("releaseNotes.fallback")).split(/\r?\n/).map((line, index) => line.startsWith("## ") ? <h3 key={index}>{line.slice(3)}</h3> : line.startsWith("- ") ? <p className="release-note-item" key={index}>• {line.slice(2)}</p> : line ? <p key={index}>{line.replace(/^#+\s*/, "")}</p> : <br key={index} />)}</div><footer><button className="send" onClick={onClose}>{t("releaseNotes.close")}</button></footer></section></div>;
 }
 
 function FeedbackDialog({ t, onClose }: { t: T; onClose: () => void }) {
   const [subject, setSubject] = useState(() => t("feedback.defaultSubject")), [message, setMessage] = useState(""), [copied, setCopied] = useState(false);
+  useEscape(onClose);
   const email = "bob62138@gmail.com", body = `${message}\n\n${t("feedback.application")}`;
   const send = () => window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, "_blank");
   const copy = async () => { await navigator.clipboard.writeText(`${t("feedback.mailTo")} : ${email}\n${t("feedback.mailSubject")} : ${subject}\n\n${body}`); setCopied(true); };
-  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("feedback.title")}</h2><p>{t("feedback.intro")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
+  return <div className="feedback-overlay" onClick={onClose}><section className="feedback-dialog" role="dialog" aria-modal="true" onClick={(event) => event.stopPropagation()}><header><div><h2>{t("feedback.title")}</h2><p>{t("feedback.intro")}</p></div><button aria-label={t("settings.close")} onClick={onClose}><X /></button></header>
     <label>{t("feedback.subject")}<input value={subject} onChange={(event) => setSubject(event.target.value)} /></label><label>{t("feedback.message")}<textarea rows={7} value={message} onChange={(event) => setMessage(event.target.value)} placeholder={t("feedback.placeholder")} /></label>
     {copied && <p className="feedback-copied">{t("feedback.copied")}</p>}<footer><button onClick={() => void copy()}>{t("feedback.copy")}</button><button className="send" disabled={!message.trim()} onClick={send}>{t("feedback.send")}</button></footer></section></div>;
 }

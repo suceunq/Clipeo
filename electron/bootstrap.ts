@@ -3,6 +3,7 @@ const { autoUpdater } = require('electron-updater') as typeof import('electron-u
 const { appendFile, mkdir, readFile, writeFile } = require('node:fs/promises') as typeof import('node:fs/promises');
 const { join } = require('node:path') as typeof import('node:path');
 const { initializeLocale } = require('./services/settings.js') as typeof import('./services/settings');
+const { hasPendingDownloads } = require('./services/download-manager.js') as typeof import('./services/download-manager');
 const { translate: t } = require('../shared/i18n.js') as typeof import('../shared/i18n');
 import type { ReleaseNotes, UpdateState } from '../shared/types';
 
@@ -40,6 +41,12 @@ function publishUpdateState(patch: Partial<UpdateState>) {
   updateState = { ...updateState, ...patch, currentVersion: app.getVersion() };
   for (const window of BrowserWindow.getAllWindows()) window.webContents.send('update:state', updateState);
   return updateState;
+}
+// Ne jamais couper un téléchargement multimédia en cours : l'installation silencieuse attend
+// que la file soit vide (et reste de toute façon appliquée à la fermeture de l'application).
+function installWhenIdle() {
+  if (hasPendingDownloads()) { setTimeout(installWhenIdle, 5000).unref(); return; }
+  autoUpdater.quitAndInstall(true, true);
 }
 async function checkForUpdates() {
   if (!app.isPackaged) return publishUpdateState({ phase: 'error', message: t('update.packagedOnly') });
@@ -79,7 +86,7 @@ app.whenReady().then(async () => {
     await writeFile(transactionPath(), JSON.stringify(transaction, null, 2), 'utf8');
     await log('INFO', `Téléchargement ${info.version} vérifié; installation silencieuse`);
     publishUpdateState({ phase: 'ready', availableVersion: info.version, percent: 100, message: undefined });
-    setTimeout(() => autoUpdater.quitAndInstall(true, true), 750).unref();
+    setTimeout(installWhenIdle, 750).unref();
   });
   setTimeout(() => void checkForUpdates(), 4000).unref();
   const interval = setInterval(() => void checkForUpdates(), 60 * 60 * 1000);

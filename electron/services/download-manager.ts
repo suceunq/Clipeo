@@ -27,6 +27,10 @@ export async function queueDownload(request: DownloadRequest, win: BrowserWindow
   return { id: item.id };
 }
 
+export function hasPendingDownloads() {
+  return running > 0 || pending.length > 0;
+}
+
 function drain() {
   while (running < maximumConcurrent && pending.length) { running++; pending.shift()?.(); }
 }
